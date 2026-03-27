@@ -5,12 +5,12 @@ import { ServerContext } from "../types.js";
 
 export function register(server: McpServer, context: ServerContext): void {
     registerCommandTool(server, context, {
-        name: "create_input_mapping",
-        description: "为项目创建输入映射，将按键绑定到输入动作",
+        name: "add_enhanced_input_mapping",
+        description: "向 Enhanced Input Mapping Context 添加按键映射",
         inputSchema: {
-            action_name: z.string().describe("输入动作名称"),
+            mapping_context_path: z.string().describe("InputMappingContext 资产路径，如 /Game/Input/IMC_Player.IMC_Player"),
+            input_action_path: z.string().describe("InputAction 资产路径，如 /Game/Input/IA_Jump.IA_Jump"),
             key: z.string().describe("绑定的按键，如 SpaceBar、LeftMouseButton"),
-            input_type: z.enum(["Action", "Axis"]).default("Action").describe("输入映射类型"),
         },
     });
 }
