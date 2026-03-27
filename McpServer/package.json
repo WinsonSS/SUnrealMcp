@@ -16,9 +16,10 @@
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "npm run build && node ./tests/run-tests.js"
   },
-  "files": ["build"],
+  "files": ["build", "config.json"],
   "bin": {
     "SUnrealMcp": "./build/index.js"
   }

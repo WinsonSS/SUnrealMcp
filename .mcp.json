@@ -3,7 +3,7 @@
     "SUnrealMcp": {
       "command": "node",
       "args": [
-        "E:/Project/SUnrealMcp/McpServer/build/index.js"
+        "D:/Projects/AGLS v1.7.0/_external/SUnrealMcp/McpServer/build/index.js"
       ]
     }
   }
