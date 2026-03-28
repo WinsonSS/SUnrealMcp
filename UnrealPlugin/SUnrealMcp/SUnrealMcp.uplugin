@@ -20,5 +20,11 @@
         "Mac"
       ]
     }
+  ],
+  "Plugins": [
+    {
+      "Name": "EnhancedInput",
+      "Enabled": true
+    }
   ]
 }

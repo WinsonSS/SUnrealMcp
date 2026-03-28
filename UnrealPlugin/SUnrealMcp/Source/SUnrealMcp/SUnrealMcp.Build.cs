@@ -17,11 +17,20 @@ public class SUnrealMcp : ModuleRules
         PrivateDependencyModuleNames.AddRange(
             new[]
             {
+                "AssetRegistry",
+                "BlueprintGraph",
                 "DeveloperSettings",
+                "EnhancedInput",
+                "InputBlueprintNodes",
+                "InputCore",
                 "Json",
                 "JsonUtilities",
                 "Networking",
                 "Sockets",
+                "Slate",
+                "SlateCore",
+                "UMG",
+                "UMGEditor",
                 "UnrealEd"
             });
     }

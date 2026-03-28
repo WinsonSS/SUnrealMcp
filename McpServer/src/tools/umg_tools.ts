@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { colorSchema, registerCommandTool, vec2Schema } from "../../runtime/tool_helpers.js";
-import { ServerContext } from "../../types.js";
+import { colorSchema, registerCommandTool, vec2Schema } from "../runtime/tool_helpers.js";
+import { ServerContext } from "../types.js";
 
 export function register(server: McpServer, context: ServerContext): void {
     registerCommandTool(server, context, {

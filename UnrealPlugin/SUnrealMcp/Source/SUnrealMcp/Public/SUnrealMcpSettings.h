@@ -24,6 +24,9 @@ public:
     UPROPERTY(Config, EditAnywhere, Category="Server", meta=(ClampMin="1", ClampMax="128"))
     int32 ListenBacklog = 8;
 
+    UPROPERTY(Config, EditAnywhere, Category="Server", meta=(ClampMin="65536", ClampMax="67108864"))
+    int32 MaxPendingSendBytesPerConnection = 8 * 1024 * 1024;
+
     UPROPERTY(Config, EditAnywhere, Category="Server")
     bool bAutoStartServer = true;
 

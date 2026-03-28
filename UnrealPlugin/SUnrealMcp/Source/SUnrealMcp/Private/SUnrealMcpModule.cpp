@@ -36,7 +36,7 @@ void FSUnrealMcpModule::StartupModule()
     ServerConfig.BindAddress = Settings->BindAddress;
     ServerConfig.Port = Settings->Port;
     ServerConfig.ListenBacklog = Settings->ListenBacklog;
-    ServerConfig.MaxPendingSendBytesPerConnection = 256 * 1024;
+    ServerConfig.MaxPendingSendBytesPerConnection = Settings->MaxPendingSendBytesPerConnection;
 
     if (!Settings->bAutoStartServer)
     {

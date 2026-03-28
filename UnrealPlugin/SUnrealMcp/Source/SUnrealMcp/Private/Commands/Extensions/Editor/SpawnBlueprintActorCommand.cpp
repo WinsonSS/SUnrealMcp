@@ -4,17 +4,34 @@
 
 namespace
 {
-    class FSpawnActorCommand final : public ISUnrealMcpCommand
+    class FSpawnBlueprintActorCommand final : public ISUnrealMcpCommand
     {
     public:
         virtual FString GetCommandName() const override
         {
-            return TEXT("spawn_actor");
+            return TEXT("spawn_blueprint_actor");
         }
 
         virtual FSUnrealMcpResponse Execute(const FSUnrealMcpRequest& Request, const FSUnrealMcpExecutionContext& Context) override
         {
             static_cast<void>(Context);
+
+            if (!Request.Params.IsValid())
+            {
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("INVALID_PARAMS"),
+                    TEXT("spawn_blueprint_actor requires a params object."));
+            }
+
+            FString BlueprintPath;
+            if (!Request.Params->TryGetStringField(TEXT("blueprint_path"), BlueprintPath) || BlueprintPath.IsEmpty())
+            {
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("INVALID_PARAMS"),
+                    TEXT("Missing blueprint_path."));
+            }
 
             FSUnrealMcpResponse ErrorResponse;
             UWorld* EditorWorld = SUnrealMcpEditorCommandUtils::GetEditorWorld(Request.RequestId, ErrorResponse);
@@ -23,32 +40,14 @@ namespace
                 return ErrorResponse;
             }
 
-            if (!Request.Params.IsValid())
-            {
-                return FSUnrealMcpResponse::MakeError(
-                    Request.RequestId,
-                    TEXT("INVALID_PARAMS"),
-                    TEXT("spawn_actor requires a params object."));
-            }
-
-            FString ActorClassReference;
-            if (!Request.Params->TryGetStringField(TEXT("actor_class"), ActorClassReference))
-            {
-                return FSUnrealMcpResponse::MakeError(
-                    Request.RequestId,
-                    TEXT("INVALID_PARAMS"),
-                    TEXT("Missing actor_class."));
-            }
-
-            UClass* ActorClass = SUnrealMcpEditorCommandUtils::ResolveActorClassPath(ActorClassReference);
+            FString ClassLoadError;
+            UClass* ActorClass = SUnrealMcpEditorCommandUtils::LoadBlueprintActorClass(BlueprintPath, ClassLoadError);
             if (ActorClass == nullptr)
             {
                 return FSUnrealMcpResponse::MakeError(
                     Request.RequestId,
-                    TEXT("INVALID_CLASS"),
-                    FString::Printf(
-                        TEXT("Could not resolve actor class '%s'. Provide a full Unreal class path such as /Script/Engine.StaticMeshActor or /Game/Blueprints/BP_MyActor.BP_MyActor_C."),
-                        *ActorClassReference));
+                    TEXT("INVALID_BLUEPRINT"),
+                    ClassLoadError);
             }
 
             FVector Location = FVector::ZeroVector;
@@ -70,7 +69,7 @@ namespace
                 return FSUnrealMcpResponse::MakeError(
                     Request.RequestId,
                     TEXT("SPAWN_FAILED"),
-                    TEXT("Editor world failed to spawn actor."));
+                    TEXT("Editor world failed to spawn blueprint actor."));
             }
 
             FString ActorLabel;
@@ -80,13 +79,14 @@ namespace
             }
 
             TSharedPtr<FJsonObject> Data = MakeShared<FJsonObject>();
+            Data->SetStringField(TEXT("blueprintPath"), BlueprintPath);
             Data->SetObjectField(TEXT("actor"), SUnrealMcpEditorCommandUtils::BuildActorSummary(SpawnedActor));
             return FSUnrealMcpResponse::MakeSuccess(Request.RequestId, Data);
         }
     };
 
-    const FSUnrealMcpCommandAutoRegistrar SpawnActorCommandRegistrar([]()
+    const FSUnrealMcpCommandAutoRegistrar SpawnBlueprintActorCommandRegistrar([]()
     {
-        return MakeShared<FSpawnActorCommand>();
+        return MakeShared<FSpawnBlueprintActorCommand>();
     });
 }
