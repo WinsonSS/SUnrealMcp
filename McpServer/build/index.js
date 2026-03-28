@@ -10,6 +10,8 @@ const ConfigFileSchema = z.object({
     host: z.string().min(1).optional(),
     port: z.number().int().positive().optional(),
     timeoutMs: z.number().int().positive().optional(),
+    taskTimeoutMs: z.number().int().positive().optional(),
+    taskStatusRetryLimit: z.number().int().nonnegative().optional(),
 }).strict();
 function createLogger() {
     const write = (level) => (message, meta) => {
@@ -55,6 +57,8 @@ async function readConfig() {
         host: mergedConfig.host ?? "127.0.0.1",
         port: toFiniteNumber(mergedConfig.port !== undefined ? String(mergedConfig.port) : undefined, 55557),
         timeoutMs: toFiniteNumber(mergedConfig.timeoutMs !== undefined ? String(mergedConfig.timeoutMs) : undefined, 5000),
+        taskTimeoutMs: toFiniteNumber(mergedConfig.taskTimeoutMs !== undefined ? String(mergedConfig.taskTimeoutMs) : undefined, 30000),
+        taskStatusRetryLimit: toFiniteNumber(mergedConfig.taskStatusRetryLimit !== undefined ? String(mergedConfig.taskStatusRetryLimit) : undefined, 3),
     };
 }
 const logger = createLogger();
@@ -78,22 +82,34 @@ server.registerTool("ping", {
         ],
     };
 });
+async function collectToolModulePaths(rootDir) {
+    const entries = await readdir(rootDir, { withFileTypes: true });
+    const modulePaths = [];
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+        const fullPath = join(rootDir, entry.name);
+        if (entry.isDirectory()) {
+            modulePaths.push(...(await collectToolModulePaths(fullPath)));
+            continue;
+        }
+        if (entry.isFile() && entry.name.endsWith(".js")) {
+            modulePaths.push(fullPath);
+        }
+    }
+    return modulePaths;
+}
 async function registerAllTools(target, serverContext) {
     const __dirname = dirname(fileURLToPath(import.meta.url));
     const toolsDir = join(__dirname, "tools");
-    const files = await readdir(toolsDir);
+    const modulePaths = await collectToolModulePaths(toolsDir);
     const registeredModules = [];
-    for (const file of files.sort()) {
-        if (!file.endsWith(".js")) {
-            continue;
-        }
-        const modulePath = join(toolsDir, file);
+    for (const modulePath of modulePaths) {
+        const relativeModulePath = modulePath.slice(toolsDir.length + 1).replaceAll("\\", "/");
         const imported = (await import(pathToFileURL(modulePath).href));
         if (typeof imported.register !== "function") {
-            throw new Error(`Tool module "${file}" does not export register(server, context)`);
+            throw new Error(`Tool module "${relativeModulePath}" does not export register(server, context)`);
         }
         imported.register(target, serverContext);
-        registeredModules.push(file);
+        registeredModules.push(relativeModulePath);
     }
     return registeredModules;
 }
@@ -112,6 +128,8 @@ async function main() {
         host: config.host,
         port: config.port,
         timeoutMs: config.timeoutMs,
+        taskTimeoutMs: config.taskTimeoutMs,
+        taskStatusRetryLimit: config.taskStatusRetryLimit,
     });
     const registeredModules = await registerAllTools(server, context);
     logger.info("Registered tool modules", { modules: registeredModules });

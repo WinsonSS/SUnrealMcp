@@ -12,6 +12,8 @@ const ConfigFileSchema = z.object({
     host: z.string().min(1).optional(),
     port: z.number().int().positive().optional(),
     timeoutMs: z.number().int().positive().optional(),
+    taskTimeoutMs: z.number().int().positive().optional(),
+    taskStatusRetryLimit: z.number().int().nonnegative().optional(),
 }).strict();
 
 function createLogger(): Logger {
@@ -73,6 +75,14 @@ async function readConfig(): Promise<ServerConfig> {
             mergedConfig.timeoutMs !== undefined ? String(mergedConfig.timeoutMs) : undefined,
             5000,
         ),
+        taskTimeoutMs: toFiniteNumber(
+            mergedConfig.taskTimeoutMs !== undefined ? String(mergedConfig.taskTimeoutMs) : undefined,
+            30000,
+        ),
+        taskStatusRetryLimit: toFiniteNumber(
+            mergedConfig.taskStatusRetryLimit !== undefined ? String(mergedConfig.taskStatusRetryLimit) : undefined,
+            3,
+        ),
     };
 }
 
@@ -107,26 +117,41 @@ server.registerTool(
     },
 );
 
-async function registerAllTools(target: McpServer, serverContext: ServerContext): Promise<string[]> {
-    const __dirname = dirname(fileURLToPath(import.meta.url));
-    const toolsDir = join(__dirname, "tools");
-    const files = await readdir(toolsDir);
-    const registeredModules: string[] = [];
+async function collectToolModulePaths(rootDir: string): Promise<string[]> {
+    const entries = await readdir(rootDir, { withFileTypes: true });
+    const modulePaths: string[] = [];
 
-    for (const file of files.sort()) {
-        if (!file.endsWith(".js")) {
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+        const fullPath = join(rootDir, entry.name);
+        if (entry.isDirectory()) {
+            modulePaths.push(...(await collectToolModulePaths(fullPath)));
             continue;
         }
 
-        const modulePath = join(toolsDir, file);
+        if (entry.isFile() && entry.name.endsWith(".js")) {
+            modulePaths.push(fullPath);
+        }
+    }
+
+    return modulePaths;
+}
+
+async function registerAllTools(target: McpServer, serverContext: ServerContext): Promise<string[]> {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const toolsDir = join(__dirname, "tools");
+    const modulePaths = await collectToolModulePaths(toolsDir);
+    const registeredModules: string[] = [];
+
+    for (const modulePath of modulePaths) {
+        const relativeModulePath = modulePath.slice(toolsDir.length + 1).replaceAll("\\", "/");
         const imported = (await import(pathToFileURL(modulePath).href)) as Partial<ToolModule>;
 
         if (typeof imported.register !== "function") {
-            throw new Error(`Tool module "${file}" does not export register(server, context)`);
+            throw new Error(`Tool module "${relativeModulePath}" does not export register(server, context)`);
         }
 
         imported.register(target, serverContext);
-        registeredModules.push(file);
+        registeredModules.push(relativeModulePath);
     }
 
     return registeredModules;
@@ -148,6 +173,8 @@ async function main() {
         host: config.host,
         port: config.port,
         timeoutMs: config.timeoutMs,
+        taskTimeoutMs: config.taskTimeoutMs,
+        taskStatusRetryLimit: config.taskStatusRetryLimit,
     });
 
     const registeredModules = await registerAllTools(server, context);

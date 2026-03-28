@@ -14,12 +14,16 @@ export interface ServerConfig {
     host: string;
     port: number;
     timeoutMs: number;
+    taskTimeoutMs: number;
+    taskStatusRetryLimit: number;
 }
 
 export interface PartialServerConfig {
     host?: string;
     port?: number;
     timeoutMs?: number;
+    taskTimeoutMs?: number;
+    taskStatusRetryLimit?: number;
 }
 
 export interface ServerContext {
@@ -34,11 +38,27 @@ export interface ToolModule {
 
 export type ToolInputShape = Record<string, ZodTypeAny>;
 
+export type CommandExecutionMode = "sync" | "task";
+
+export interface CommandTaskOptions {
+    waitForCompletion?: boolean;
+    pollIntervalMs?: number;
+    timeoutMs?: number;
+    cancelOnTimeout?: boolean;
+    statusRetryLimit?: number;
+    nonRetryableErrorCodes?: string[];
+    statusCommand?: string;
+    cancelCommand?: string;
+    taskIdField?: string;
+}
+
 export interface CommandToolDefinition {
     name: string;
     description: string;
     command?: string;
     inputSchema?: ToolInputShape;
+    executionMode?: CommandExecutionMode;
+    taskOptions?: CommandTaskOptions;
     mapParams?: (input: Record<string, unknown>) => UnrealCommandParams;
     formatResponse?: (response: NormalizedUnrealResponse, input: Record<string, unknown>) => unknown;
 }
