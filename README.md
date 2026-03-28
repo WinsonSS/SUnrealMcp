@@ -119,6 +119,59 @@ node ./build/index.js
 4. 在 MCP 客户端中连接 `build/index.js`
 5. 先调用 `ping` 验证链路
 
+## 如何接入 Agent
+
+这个仓库里的 `McpServer` 不是直接给人手动操作的 UI，而是给支持 MCP 的 Agent / Client 使用的。
+
+典型接入方式是：
+
+1. 先完成 Unreal 插件部署
+2. 在 `McpServer/` 下执行：
+
+```bash
+npm install
+npm run build
+```
+
+3. 在你的 MCP Client 或 Agent 配置中，把这个 server 注册进去
+4. 让客户端启动 `McpServer/build/index.js`
+
+### 接入 Codex
+
+如果你使用的是 Codex，可以在 Codex 的 MCP 配置里添加一个 server 条目，命令指向 Node，参数指向构建后的入口文件。
+
+示例：
+
+```toml
+[mcp_servers.SUnrealMcp]
+command = "node"
+args = ["D:/path/to/SUnrealMcp/McpServer/build/index.js"]
+```
+
+如果你不想在配置里写绝对路径，也可以按你自己的环境改成相对路径或启动脚本，但核心原则是不变的：
+
+- Agent 启动的是 `McpServer/build/index.js`
+- `McpServer` 再去连接 Unreal 插件监听的 TCP 地址
+
+### 通用 MCP Client 接入原则
+
+对于其他支持 MCP 的客户端，通常也只需要提供以下信息：
+
+- executable: `node`
+- arguments: `[".../McpServer/build/index.js"]`
+- working directory: 可选，通常设为 `McpServer/`
+
+### 接入前提
+
+要让 Agent 真正可用，还需要同时满足：
+
+- Unreal Editor 已启动
+- `SUnrealMcp` 插件已启用
+- 插件 TCP server 已正常监听
+- `McpServer` 的 host / port 与 Unreal 插件配置一致
+
+如果 Agent 已经能看到 `ping`、`get_actors_in_level` 之类的工具，说明接入链路已经打通。
+
 ## 如何扩展 Tool
 
 如果你要增加一个新的端到端能力，通常需要同时改 `McpServer` 和 Unreal 插件两边。
@@ -342,6 +395,50 @@ Default server values are defined in:
 3. Build and start `McpServer`.
 4. Connect your MCP client to the built server entrypoint.
 5. Call `ping` first.
+
+## Connecting an Agent
+
+`McpServer` is meant to be consumed by an MCP-capable client or agent rather than used directly by hand.
+
+Typical setup flow:
+
+1. deploy the Unreal plugin
+2. run `npm install` and `npm run build` inside `McpServer/`
+3. register the built server in your MCP client / agent configuration
+4. let the client launch `McpServer/build/index.js`
+
+### Connecting Codex
+
+For Codex, add an MCP server entry that launches Node with the built server entrypoint.
+
+Example:
+
+```toml
+[mcp_servers.SUnrealMcp]
+command = "node"
+args = ["D:/path/to/SUnrealMcp/McpServer/build/index.js"]
+```
+
+You can adapt the path to your own machine, use a wrapper script, or use a relative path if your environment supports it. The important part is that the agent launches the built MCP server entrypoint.
+
+### Generic MCP Client Setup
+
+For most MCP-capable clients, the required pieces are:
+
+- executable: `node`
+- arguments: `[".../McpServer/build/index.js"]`
+- working directory: optional, usually `McpServer/`
+
+### Preconditions
+
+For the agent connection to work end-to-end:
+
+- Unreal Editor must already be running
+- the `SUnrealMcp` plugin must be enabled
+- the plugin TCP server must be listening
+- the `McpServer` host / port settings must match the Unreal plugin settings
+
+If the agent can see tools such as `ping` or `get_actors_in_level`, the MCP integration is wired up correctly.
 
 ## Extending Tools and Commands
 
