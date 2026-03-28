@@ -153,6 +153,50 @@ args = ["D:/path/to/SUnrealMcp/McpServer/build/index.js"]
 - Agent 启动的是 `McpServer/build/index.js`
 - `McpServer` 再去连接 Unreal 插件监听的 TCP 地址
 
+### 在 Codex 中部署 `sunrealmcp-self-extension` Skill
+
+如果你希望 Codex 在使用 `SUnrealMcp` 时，遇到真实能力缺口能够继续扩展 MCP 栈并在合适条件下收敛 `tool`，可以把这个 skill 部署到 Codex 的 skills 目录。
+
+当前仓库中的 skill 位置：
+
+```text
+.codex/skills/sunrealmcp-self-extension/
+├─ SKILL.md
+└─ SKILL_cn.md
+```
+
+典型部署方式：
+
+1. 将整个 `sunrealmcp-self-extension` 目录复制到 Codex 的 skills 根目录
+2. 保持目录名不变
+3. 确认目标目录下至少存在 `SKILL.md`
+4. 重启 Codex，或重新加载 skills
+
+以 Windows 上的 Codex 默认目录为例：
+
+```text
+C:\Users\<YourUser>\.codex\skills\sunrealmcp-self-extension\
+├─ SKILL.md
+└─ SKILL_cn.md
+```
+
+如果你当前就在这个仓库里使用 Codex，也可以直接复用仓库内的 skill 副本，前提是你的 Codex 环境会扫描该 skills 路径。
+
+这个 skill 主要在下面这类场景触发：
+
+- Codex 正在通过 `SUnrealMcp` 完成 Unreal 自动化任务
+- 现有 `tools` 不足以完成任务
+- 缺口是真实存在的，而不是调用方式错误
+- 目标是继续完成任务，而不是停在分析
+
+部署完成后，Codex 的行为目标会变成：
+
+- 先尝试复用现有 `tools`
+- 必要时同时改 `McpServer` 和 Unreal 插件
+- 重建、验证、刷新 `tool discovery`
+- 回到原始任务继续完成
+- 在满足条件时，对临时或重叠 `tools` 做收敛检查
+
 ### 通用 MCP Client 接入原则
 
 对于其他支持 MCP 的客户端，通常也只需要提供以下信息：
@@ -420,6 +464,50 @@ args = ["D:/path/to/SUnrealMcp/McpServer/build/index.js"]
 ```
 
 You can adapt the path to your own machine, use a wrapper script, or use a relative path if your environment supports it. The important part is that the agent launches the built MCP server entrypoint.
+
+### Deploying the `sunrealmcp-self-extension` Skill in Codex
+
+If you want Codex to continue when `SUnrealMcp` has a real capability gap, extend the MCP stack, and converge temporary or overlapping tools when appropriate, deploy the skill into Codex's skills directory.
+
+Skill location in this repository:
+
+```text
+.codex/skills/sunrealmcp-self-extension/
+├─ SKILL.md
+└─ SKILL_cn.md
+```
+
+Typical deployment flow:
+
+1. Copy the entire `sunrealmcp-self-extension` directory into Codex's skills root.
+2. Keep the folder name unchanged.
+3. Ensure `SKILL.md` exists in the deployed folder.
+4. Restart Codex or reload skills.
+
+Example Windows destination:
+
+```text
+C:\Users\<YourUser>\.codex\skills\sunrealmcp-self-extension\
+├─ SKILL.md
+└─ SKILL_cn.md
+```
+
+If you are already using Codex inside this repository, you may also reuse the in-repo copy as long as your Codex environment scans that skills path.
+
+The skill is meant to activate when:
+
+- Codex is using `SUnrealMcp` for an Unreal automation task
+- existing tools are not enough to finish the task
+- the gap is real rather than a misuse issue
+- the expectation is to continue and finish the task instead of stopping at analysis
+
+After deployment, the intended behavior is:
+
+- try existing tools first
+- update both `McpServer` and the Unreal plugin only when needed
+- rebuild, validate, and refresh tool discovery
+- return to the original task and finish it
+- run convergence review for temporary or overlapping tools when applicable
 
 ### Generic MCP Client Setup
 
