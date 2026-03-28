@@ -1,193 +1,173 @@
 # SUnrealMcp
 
-SUnrealMcp is a two-part Unreal Engine integration for the Model Context Protocol:
+中文 | [English](#english)
 
-- `UnrealPlugin/SUnrealMcp`: a UE5 editor plugin that exposes Unreal editor operations through a lightweight TCP JSON protocol
-- `McpServer`: a Node.js MCP server that connects to the plugin and re-publishes those capabilities as MCP tools
+SUnrealMcp 是一个面向 Unreal Engine 的双端 MCP 集成方案，由两部分组成：
 
-Together they let an MCP client drive common Unreal Editor workflows such as actor editing, Blueprint editing, UMG creation, node wiring, task polling, and project-side input configuration.
+- `UnrealPlugin/SUnrealMcp`
+  UE5 编辑器插件，负责在 Unreal Editor 内执行命令并通过 TCP JSON 协议对外暴露能力
+- `McpServer`
+  Node.js 编写的 MCP Server，负责连接插件并把 Unreal 能力重新发布为 MCP tools
 
-## What It Does
+两部分配合后，MCP 客户端就可以通过标准工具调用驱动 Unreal Editor，例如：
 
-The current stack provides:
+- 查询和编辑关卡中的 Actor
+- 创建和编译 Blueprint
+- 编辑 Blueprint 组件和部分属性
+- 在 Blueprint 图里添加节点、连接节点
+- 创建和编辑 UMG Widget
+- 发起任务、轮询状态、取消任务
 
-- actor queries and editing in the current editor level
-- Blueprint creation, compilation, component editing, and selected property updates
-- Blueprint graph operations such as adding event/function/input nodes and connecting pins
-- UMG widget creation and editing
-- task-style command support with polling and cancellation
-- a typed MCP tool layer built with `@modelcontextprotocol/sdk`
-
-At a high level, the flow looks like this:
-
-1. An MCP client calls a tool exposed by `McpServer`.
-2. `McpServer` converts that tool call into a protocol request and sends it over TCP.
-3. The Unreal plugin executes the matching command inside the editor.
-4. The result is returned to `McpServer` and then surfaced back to the MCP client.
-
-## Repository Layout
+## 仓库结构
 
 ```text
 SUnrealMcp/
-├─ McpServer/                  # Node.js MCP server
+├─ McpServer/                  # Node.js MCP Server
 │  ├─ src/
-│  │  ├─ index.ts              # server bootstrap
-│  │  ├─ protocol.ts           # request/response envelope
-│  │  ├─ transport/            # TCP client talking to Unreal
-│  │  ├─ runtime/              # tool registration helpers
-│  │  └─ tools/                # MCP tool definitions
+│  │  ├─ index.ts              # Server 启动入口
+│  │  ├─ protocol.ts           # 请求/响应协议定义
+│  │  ├─ transport/            # 与 Unreal 插件通信的 TCP 客户端
+│  │  ├─ runtime/              # Tool 注册辅助逻辑
+│  │  └─ tools/                # MCP Tool 定义
 │  └─ tests/
 ├─ UnrealPlugin/
-│  └─ SUnrealMcp/              # Unreal editor plugin
+│  └─ SUnrealMcp/              # Unreal Editor 插件
 │     ├─ Source/SUnrealMcp/Public/Mcp/
 │     └─ Source/SUnrealMcp/Private/
 └─ README.md
 ```
 
-## Requirements
+## 功能概览
 
-- Unreal Engine 5.x editor
-- Node.js 18+ recommended
-- Windows development environment is the primary tested setup in this repo
+当前仓库已经覆盖的核心能力包括：
 
-## Deploying the Unreal Plugin
+- `Editor` 类工具
+  获取 Actor、按 Label 查找、生成 Actor、删除 Actor、修改 Transform、读取和设置属性
+- `Blueprint` 类工具
+  创建 Blueprint、添加组件、设置静态网格、设置物理属性、编译 Blueprint、修改默认对象属性
+- `Node` 类工具
+  添加事件节点、输入节点、函数节点、变量节点、Self/组件引用节点、连接节点、查找节点
+- `UMG` 类工具
+  创建 Widget Blueprint、添加文本块、添加按钮、绑定事件、设置文本绑定、将 Widget 加入视口
+- `Project` 类工具
+  Enhanced Input Mapping Context 映射写入
+- `Task` 支持
+  `get_task_status`、`cancel_task`
 
-1. Copy `UnrealPlugin/SUnrealMcp` into your Unreal project's `Plugins/` directory.
+## 工作流程
 
-   Resulting layout:
+整体调用链如下：
 
-   ```text
-   YourProject/
-   └─ Plugins/
-      └─ SUnrealMcp/
-   ```
+1. MCP 客户端调用 `McpServer` 暴露的 tool
+2. `McpServer` 将 tool 调用转换为协议请求
+3. 请求通过 TCP 发送到 Unreal 插件
+4. Unreal 插件的 Command Registry 分发到对应命令实现
+5. 结果返回给 `McpServer`
+6. `McpServer` 再将结果返回给 MCP 客户端
 
-2. Open the project in Unreal Editor.
-3. Let Unreal compile the plugin, or build the editor target from Visual Studio / `Build.bat`.
-4. In Unreal Editor, check the plugin settings under `Project Settings` / `Editor Preferences` depending on your setup and confirm:
-   - bind address
-   - port
-   - auto-start setting
-   - completed task retention
+## 部署 Unreal 插件
 
-The plugin settings class is defined in [SUnrealMcpSettings.h](/D:/Projects/AGLS%20v1.7.0/_external/SUnrealMcp/UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Public/SUnrealMcpSettings.h).
+1. 将 `UnrealPlugin/SUnrealMcp` 整个目录复制到你的 Unreal 项目 `Plugins/` 下
 
-Default values include:
+```text
+YourProject/
+└─ Plugins/
+   └─ SUnrealMcp/
+```
+
+2. 打开 Unreal 项目
+3. 让 Unreal 自动编译，或者手动编译 Editor Target
+4. 在 Unreal 的设置中确认插件配置
+
+插件设置类定义见：
+[SUnrealMcpSettings.h](UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Public/SUnrealMcpSettings.h)
+
+默认配置：
 
 - `BindAddress = 127.0.0.1`
 - `Port = 55557`
 - `bAutoStartServer = true`
+- `CompletedTaskRetentionSeconds = 300`
 
-## Deploying the MCP Server
+## 部署 McpServer
 
-1. Go to `McpServer/`.
-2. Install dependencies:
+进入 `McpServer/` 后执行：
 
 ```bash
 npm install
-```
-
-3. Build the server:
-
-```bash
 npm run build
-```
-
-4. Start it from the compiled output:
-
-```bash
 node ./build/index.js
 ```
 
-The MCP server reads configuration from:
+`McpServer` 会读取：
 
-- `McpServer/config.json`
-- `McpServer/config.local.json`
+- `config.json`
+- `config.local.json`
 
-The default connection settings in the server bootstrap are:
+默认配置在 [index.ts](McpServer/src/index.ts) 中定义，包括：
 
 - host: `127.0.0.1`
 - port: `55557`
 - timeout: `5000ms`
 - task timeout: `30000ms`
 
-These defaults are defined in [index.ts](/D:/Projects/AGLS%20v1.7.0/_external/SUnrealMcp/McpServer/src/index.ts).
+## 推荐启动顺序
 
-## End-to-End Bring-Up
+1. 启动 Unreal Editor，并确保插件已启用
+2. 确认插件侧 TCP Server 正常监听
+3. 构建并启动 `McpServer`
+4. 在 MCP 客户端中连接 `build/index.js`
+5. 先调用 `ping` 验证链路
 
-Recommended startup order:
+## 如何扩展 Tool
 
-1. Start Unreal Editor with the plugin enabled.
-2. Confirm the plugin TCP server is listening.
-3. Build and start `McpServer`.
-4. Connect your MCP client to the built server entrypoint.
-5. Call `ping` first to verify the stack is healthy.
+如果你要增加一个新的端到端能力，通常需要同时改 `McpServer` 和 Unreal 插件两边。
 
-If `ping` works but editor-facing tools fail, the usual causes are:
+### 1. 在 McpServer 侧增加 Tool
 
-- Unreal plugin not loaded
-- host/port mismatch between plugin and `McpServer`
-- editor world or runtime world not available for the requested command
-- a tool definition exists in `McpServer`, but the corresponding plugin command is missing or outdated
-
-## How Tool Calls Are Mapped
-
-The two halves intentionally have different responsibilities:
+位置：
 
 - `McpServer/src/tools/*.ts`
-  defines MCP-visible tool names, schemas, defaults, and task behavior
-- Unreal plugin command classes
-  implement actual editor behavior and expose command names through `GetCommandName()`
 
-In the normal sync case:
+注册入口辅助函数：
 
-1. `registerCommandTool(...)` registers a tool in `McpServer`
-2. the tool name is used as the command name unless overridden
-3. `McpServer` sends `{ protocolVersion, requestId, command, params }`
-4. the plugin command registry dispatches to the matching Unreal command
+- [tool_helpers.ts](McpServer/src/runtime/tool_helpers.ts)
 
-## Extending the System
+通常需要定义：
 
-### Add a New MCP Tool
+- `name`
+- `description`
+- `inputSchema`
+- 可选的 `mapParams`
+- 可选的 `executionMode: "task"`
+- 可选的 `taskOptions`
 
-If you want to expose a new capability end-to-end, you usually need changes in both halves.
-
-On the `McpServer` side:
-
-1. Add or update a tool definition in `McpServer/src/tools/*.ts`.
-2. Use `registerCommandTool(...)` from [tool_helpers.ts](/D:/Projects/AGLS%20v1.7.0/_external/SUnrealMcp/McpServer/src/runtime/tool_helpers.ts).
-3. Define:
-   - `name`
-   - `description`
-   - `inputSchema`
-   - optional `mapParams`
-   - optional `executionMode: "task"`
-   - optional `taskOptions`
-4. Build the server with `npm run build`.
-
-Example pattern:
+示例：
 
 ```ts
 registerCommandTool(server, context, {
     name: "my_command",
-    description: "Does something in Unreal",
+    description: "Do something in Unreal",
     inputSchema: {
         asset_path: z.string(),
     },
 });
 ```
 
-### Add a New Unreal Command
+### 2. 在 Unreal 插件侧增加 Command
 
-On the plugin side:
+位置：
 
-1. Add a new command class under `UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Private/Commands/...`
-2. Implement `ISUnrealMcpCommand`
-3. Return the wire command name from `GetCommandName()`
-4. Execute editor logic in `Execute(...)`
-5. Register the command via `FSUnrealMcpCommandAutoRegistrar`
+- `UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Private/Commands/...`
 
-Skeleton pattern:
+你需要：
+
+1. 新建一个实现 `ISUnrealMcpCommand` 的类
+2. 在 `GetCommandName()` 中返回与 MCP 侧一致的命令名
+3. 在 `Execute(...)` 中实现编辑器逻辑
+4. 通过 `FSUnrealMcpCommandAutoRegistrar` 自动注册
+
+示例骨架：
 
 ```cpp
 class FMyCommand final : public ISUnrealMcpCommand
@@ -207,50 +187,234 @@ public:
 };
 ```
 
-### Add a Task-Style Command
+### 3. 如果是异步任务型能力
 
-Use a task when work may span multiple ticks or should support polling/cancel.
+插件侧：
+
+- 实现 `ISUnrealMcpTask`
+- 交给 `FSUnrealMcpTaskRegistry` 管理
+- 返回带 `taskId` 的 accepted 响应
+
+Server 侧：
+
+- 在 tool 定义中设置 `executionMode: "task"`
+- 默认通过 `get_task_status` / `cancel_task` 管理任务生命周期
+
+## 协议说明
+
+`McpServer` 与 Unreal 插件之间使用的是：
+
+- TCP
+- UTF-8 JSON
+- 以换行符分隔的消息
+- 包含 `protocolVersion`、`requestId`、`ok` 的请求/响应 envelope
+
+核心协议定义位置：
+
+- [McpServer/src/protocol.ts](McpServer/src/protocol.ts)
+- [SUnrealMcpProtocol.h](UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Public/Mcp/SUnrealMcpProtocol.h)
+
+## 测试与验证
+
+常用验证方式：
+
+- 在 `McpServer/` 下执行 `npm run build`
+- 在 `McpServer/` 下执行 `npm test`
+- 在 Unreal 项目中编译插件
+- 调用 `ping`
+- 调用一个简单的编辑器工具，例如 `get_actors_in_level`
+
+## 常见问题
+
+### `npm run build` 失败
+
+优先检查：
+
+- Node.js 版本
+- 依赖是否安装完整
+- tool 文件 import 路径是否正确
+- 运行的是源码目录还是构建产物
+
+### MCP Server 启动了但无法连接 Unreal
+
+检查：
+
+- 插件是否正确加载
+- 插件 TCP Server 是否已启动
+- 双方 host / port 是否一致
+- 本地防火墙或端口占用问题
+
+### McpServer 有 tool，但 Unreal 返回 `UNKNOWN_COMMAND`
+
+通常说明：
+
+- 插件端没有对应命令实现
+- 或者插件命令 `GetCommandName()` 与 MCP tool 实际映射名不一致
+
+## 贡献建议
+
+- 尽量把协议层改动控制在最小范围
+- 新能力优先以新增 command/tool 的方式扩展，而不是修改基础 envelope
+- 改业务能力时，同时检查：
+  - MCP tool 定义
+  - Unreal Command 实现
+- 如果新增 task 型能力，要一起验证 accepted/status/cancel/timeout
+
+## License
+
+见 [LICENSE](LICENSE)。
+
+---
+
+## English
+
+SUnrealMcp is a two-part Unreal Engine integration for the Model Context Protocol:
+
+- `UnrealPlugin/SUnrealMcp`: a UE5 editor plugin that exposes Unreal editor capabilities over a lightweight TCP JSON protocol
+- `McpServer`: a Node.js MCP server that connects to the plugin and republishes those capabilities as MCP tools
+
+Together, these two parts allow an MCP client to drive Unreal Editor workflows such as actor editing, Blueprint editing, UMG creation, node wiring, task polling, and project-side input setup.
+
+## Repository Layout
+
+```text
+SUnrealMcp/
+├─ McpServer/
+│  ├─ src/
+│  │  ├─ index.ts
+│  │  ├─ protocol.ts
+│  │  ├─ transport/
+│  │  ├─ runtime/
+│  │  └─ tools/
+│  └─ tests/
+├─ UnrealPlugin/
+│  └─ SUnrealMcp/
+│     ├─ Source/SUnrealMcp/Public/Mcp/
+│     └─ Source/SUnrealMcp/Private/
+└─ README.md
+```
+
+## Features
+
+The current stack includes:
+
+- actor queries and editing in the current editor level
+- Blueprint creation, compilation, component editing, and selected property updates
+- Blueprint graph operations such as adding nodes and wiring pins
+- UMG widget creation and editing
+- task-style command support with polling and cancellation
+- typed MCP tool definitions built with `@modelcontextprotocol/sdk`
+
+## Deployment
+
+### Unreal Plugin
+
+1. Copy `UnrealPlugin/SUnrealMcp` into your Unreal project's `Plugins/` folder.
+2. Open the project in Unreal Editor.
+3. Let Unreal compile the plugin, or build the editor target manually.
+4. Verify the plugin settings such as bind address, port, auto-start, and task retention.
+
+Default values are defined in:
+[SUnrealMcpSettings.h](UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Public/SUnrealMcpSettings.h)
+
+### MCP Server
+
+Inside `McpServer/`:
+
+```bash
+npm install
+npm run build
+node ./build/index.js
+```
+
+Configuration is loaded from:
+
+- `config.json`
+- `config.local.json`
+
+Default server values are defined in:
+[index.ts](McpServer/src/index.ts)
+
+## Recommended Bring-Up Order
+
+1. Start Unreal Editor with the plugin enabled.
+2. Confirm the plugin TCP server is running.
+3. Build and start `McpServer`.
+4. Connect your MCP client to the built server entrypoint.
+5. Call `ping` first.
+
+## Extending Tools and Commands
+
+To add a new end-to-end capability, you usually need changes on both sides.
+
+### Add a Tool in `McpServer`
+
+Files:
+
+- `McpServer/src/tools/*.ts`
+
+Helper:
+
+- [tool_helpers.ts](McpServer/src/runtime/tool_helpers.ts)
+
+Typical fields:
+
+- `name`
+- `description`
+- `inputSchema`
+- optional `mapParams`
+- optional `executionMode: "task"`
+- optional `taskOptions`
+
+### Add a Command in the Unreal Plugin
+
+Files:
+
+- `UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Private/Commands/...`
+
+Steps:
+
+1. Implement `ISUnrealMcpCommand`
+2. Return the wire name in `GetCommandName()`
+3. Implement editor logic in `Execute(...)`
+4. Register it through `FSUnrealMcpCommandAutoRegistrar`
+
+### Add a Task-Based Capability
 
 Plugin side:
 
-- implement an `ISUnrealMcpTask`
+- implement `ISUnrealMcpTask`
 - enqueue it through `FSUnrealMcpTaskRegistry`
-- return the accepted response with a `taskId`
+- return an accepted response with `taskId`
 
 Server side:
 
-- set `executionMode: "task"` in the tool definition
-- rely on `get_task_status` and `cancel_task`, or override those names in `taskOptions`
+- mark the tool with `executionMode: "task"`
+- use `get_task_status` / `cancel_task` by default, or override through `taskOptions`
 
-The current task helper flow is implemented in [tool_helpers.ts](/D:/Projects/AGLS%20v1.7.0/_external/SUnrealMcp/McpServer/src/runtime/tool_helpers.ts).
+## Protocol
 
-## Protocol Notes
-
-The transport between `McpServer` and the Unreal plugin is:
+Transport between `McpServer` and the Unreal plugin is:
 
 - TCP
 - UTF-8 JSON
 - newline-delimited messages
-- request/response envelope with `protocolVersion`, `requestId`, and `ok`
+- request/response envelopes carrying `protocolVersion`, `requestId`, and `ok`
 
-Core protocol definitions live in:
+Core protocol files:
 
-- [McpServer/src/protocol.ts](/D:/Projects/AGLS%20v1.7.0/_external/SUnrealMcp/McpServer/src/protocol.ts)
-- [UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Public/Mcp/SUnrealMcpProtocol.h](/D:/Projects/AGLS%20v1.7.0/_external/SUnrealMcp/UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Public/Mcp/SUnrealMcpProtocol.h)
+- [McpServer/src/protocol.ts](McpServer/src/protocol.ts)
+- [SUnrealMcpProtocol.h](UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Public/Mcp/SUnrealMcpProtocol.h)
 
-## Testing and Validation
+## Validation
 
-Useful validation steps:
+Useful checks:
 
-- `npm run build` in `McpServer/`
-- `npm test` in `McpServer/`
+- `npm run build`
+- `npm test`
 - compile the Unreal plugin inside a UE project
 - call `ping`
-- call one simple editor command such as `get_actors_in_level`
-
-There is also a plugin-level README in:
-
-[UnrealPlugin/SUnrealMcp/README.md](/D:/Projects/AGLS%20v1.7.0/_external/SUnrealMcp/UnrealPlugin/SUnrealMcp/README.md)
+- call a simple editor-facing tool such as `get_actors_in_level`
 
 ## Troubleshooting
 
@@ -259,32 +423,33 @@ There is also a plugin-level README in:
 Check:
 
 - Node.js version
-- dependency install state
+- dependency installation state
 - tool module import paths
-- whether the repo is being run from built output or source
+- whether you are running source files or built output
 
-### The MCP server starts but cannot talk to Unreal
+### The MCP server starts but cannot reach Unreal
 
 Check:
 
-- Unreal plugin loaded successfully
-- plugin server auto-start enabled
-- host/port match on both sides
-- Windows firewall / local socket restrictions
+- plugin load state
+- plugin TCP server startup
+- matching host/port values
+- firewall or local socket restrictions
 
-### A tool exists in `McpServer` but fails with `UNKNOWN_COMMAND`
+### A tool exists in `McpServer` but Unreal returns `UNKNOWN_COMMAND`
 
-That usually means the plugin side is missing the matching Unreal command, or the command name in `GetCommandName()` does not match the tool's effective command name.
+That usually means:
 
-## Notes for Contributors
+- the plugin side does not implement the command yet
+- or `GetCommandName()` does not match the effective MCP command name
 
-- Keep protocol and transport changes minimal unless there is a clear compatibility reason.
-- Prefer adding new capabilities as commands/tools rather than changing the core envelope.
-- When changing command semantics, review both:
-  - the MCP tool definition
-  - the Unreal command implementation
-- If you add task commands, verify accepted response, status response, cancellation behavior, and timeout handling together.
+## Contributing
+
+- Keep protocol-layer changes minimal unless compatibility requires more
+- Prefer extending via new commands/tools instead of changing the core envelope
+- When changing a capability, review both the MCP tool definition and the Unreal command implementation
+- For task-style features, validate accepted/status/cancel/timeout together
 
 ## License
 
-See [LICENSE](/D:/Projects/AGLS%20v1.7.0/_external/SUnrealMcp/LICENSE).
+See [LICENSE](LICENSE).
