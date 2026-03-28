@@ -15,10 +15,10 @@ struct FSUnrealMcpServerConfig
     FString BindAddress = TEXT("127.0.0.1");
     int32 Port = 55557;
     int32 ListenBacklog = 8;
-    int32 MaxPendingSendBytesPerConnection = 256 * 1024;
+    int32 MaxPendingSendBytesPerConnection = 8 * 1024 * 1024;
 };
 
-class FSUnrealMcpServer
+class SUNREALMCP_API FSUnrealMcpServer
 {
 public:
     FSUnrealMcpServer();

@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { toResponseEnvelope } from "../protocol.js";
+import { DEFAULT_TASK_STATUS_RETRY_LIMIT } from "../index.js";
 const DEFAULT_TASK_STATUS_COMMAND = "get_task_status";
 const DEFAULT_TASK_CANCEL_COMMAND = "cancel_task";
 const DEFAULT_TASK_ID_FIELD = "taskId";
 const DEFAULT_TASK_POLL_INTERVAL_MS = 300;
 const DEFAULT_TASK_CANCEL_ON_TIMEOUT = true;
-const DEFAULT_TASK_STATUS_RETRY_LIMIT = 3;
 const DEFAULT_NON_RETRYABLE_TASK_ERROR_CODES = new Set([
     "TASK_NOT_FOUND",
     "TASK_EXPIRED",

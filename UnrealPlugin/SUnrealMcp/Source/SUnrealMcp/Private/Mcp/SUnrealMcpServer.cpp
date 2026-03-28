@@ -22,6 +22,24 @@ namespace SUnrealMcpServerLog
 
         return FString::Printf(TEXT("%s... [truncated %d chars]"), *Text.Left(MaxLength), Text.Len() - MaxLength);
     }
+
+    static FString ExtractRequestIdOrEmpty(const FString& JsonText)
+    {
+        TSharedPtr<FJsonObject> RootObject;
+        const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonText);
+        if (!FJsonSerializer::Deserialize(Reader, RootObject) || !RootObject.IsValid())
+        {
+            return TEXT("");
+        }
+
+        FString RequestId;
+        if (!RootObject->TryGetStringField(TEXT("requestId"), RequestId))
+        {
+            return TEXT("");
+        }
+
+        return RequestId;
+    }
 }
 
 FSUnrealMcpServer::FSUnrealMcpServer() = default;
@@ -165,7 +183,7 @@ void FSUnrealMcpServer::ServiceConnections()
         }
 
         TArray<uint8> Buffer;
-        Buffer.SetNumUninitialized(FMath::Min<uint32>(PendingDataSize, 64 * 1024));
+        Buffer.SetNumUninitialized(FMath::Min<uint32>(PendingDataSize, 512 * 1024));
 
         int32 BytesRead = 0;
         if (!Connection.Socket->Recv(Buffer.GetData(), Buffer.Num(), BytesRead) || BytesRead <= 0)
@@ -208,7 +226,7 @@ void FSUnrealMcpServer::ProcessIncomingText(FClientConnection& Connection, const
         if (!FSUnrealMcpRequest::FromJson(JsonLine, Request, ErrorMessage))
         {
             Response = FSUnrealMcpResponse::MakeError(
-                TEXT(""),
+                SUnrealMcpServerLog::ExtractRequestIdOrEmpty(JsonLine),
                 TEXT("INVALID_REQUEST"),
                 ErrorMessage);
             UE_LOG(

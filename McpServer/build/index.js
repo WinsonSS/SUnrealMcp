@@ -6,6 +6,11 @@ import { fileURLToPath, pathToFileURL } from "url";
 import { z } from "zod";
 import { PROTOCOL_VERSION } from "./protocol.js";
 import { UnrealTransportClient } from "./transport/unreal_client.js";
+export const DEFAULT_HOST = "127.0.0.1";
+export const DEFAULT_PORT = 55557;
+export const DEFAULT_TIMEOUT_MS = 5000;
+export const DEFAULT_TASK_TIMEOUT_MS = 30000;
+export const DEFAULT_TASK_STATUS_RETRY_LIMIT = 3;
 const ConfigFileSchema = z.object({
     host: z.string().min(1).optional(),
     port: z.number().int().positive().optional(),
@@ -54,11 +59,11 @@ async function readConfig() {
         ...localConfig,
     };
     return {
-        host: mergedConfig.host ?? "127.0.0.1",
-        port: toFiniteNumber(mergedConfig.port !== undefined ? String(mergedConfig.port) : undefined, 55557),
-        timeoutMs: toFiniteNumber(mergedConfig.timeoutMs !== undefined ? String(mergedConfig.timeoutMs) : undefined, 5000),
-        taskTimeoutMs: toFiniteNumber(mergedConfig.taskTimeoutMs !== undefined ? String(mergedConfig.taskTimeoutMs) : undefined, 30000),
-        taskStatusRetryLimit: toFiniteNumber(mergedConfig.taskStatusRetryLimit !== undefined ? String(mergedConfig.taskStatusRetryLimit) : undefined, 3),
+        host: mergedConfig.host ?? DEFAULT_HOST,
+        port: toFiniteNumber(mergedConfig.port !== undefined ? String(mergedConfig.port) : undefined, DEFAULT_PORT),
+        timeoutMs: toFiniteNumber(mergedConfig.timeoutMs !== undefined ? String(mergedConfig.timeoutMs) : undefined, DEFAULT_TIMEOUT_MS),
+        taskTimeoutMs: toFiniteNumber(mergedConfig.taskTimeoutMs !== undefined ? String(mergedConfig.taskTimeoutMs) : undefined, DEFAULT_TASK_TIMEOUT_MS),
+        taskStatusRetryLimit: toFiniteNumber(mergedConfig.taskStatusRetryLimit !== undefined ? String(mergedConfig.taskStatusRetryLimit) : undefined, DEFAULT_TASK_STATUS_RETRY_LIMIT),
     };
 }
 const logger = createLogger();
