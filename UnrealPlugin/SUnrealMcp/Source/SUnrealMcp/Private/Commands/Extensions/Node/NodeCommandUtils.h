@@ -20,6 +20,19 @@
 
 namespace SUnrealMcpNodeCommandUtils
 {
+    inline FString PinDirectionToString(EEdGraphPinDirection Direction)
+    {
+        switch (Direction)
+        {
+        case EGPD_Input:
+            return TEXT("input");
+        case EGPD_Output:
+            return TEXT("output");
+        default:
+            return TEXT("unknown");
+        }
+    }
+
     inline UEdGraph* EnsureEventGraph(UBlueprint* Blueprint)
     {
         if (Blueprint == nullptr)
@@ -81,6 +94,74 @@ namespace SUnrealMcpNodeCommandUtils
             {
                 return Node;
             }
+        }
+
+        return nullptr;
+    }
+
+    inline UEdGraph* FindGraphByName(const TArray<UEdGraph*>& Graphs, const FString& GraphName)
+    {
+        if (GraphName.IsEmpty())
+        {
+            return Graphs.Num() > 0 ? Graphs[0] : nullptr;
+        }
+
+        for (UEdGraph* Graph : Graphs)
+        {
+            if (Graph == nullptr)
+            {
+                continue;
+            }
+
+            if (Graph->GetName().Equals(GraphName, ESearchCase::IgnoreCase)
+                || Graph->GetFName().ToString().Equals(GraphName, ESearchCase::IgnoreCase))
+            {
+                return Graph;
+            }
+        }
+
+        for (UEdGraph* Graph : Graphs)
+        {
+            if (Graph != nullptr && Graph->GetSchema() != nullptr)
+            {
+                FGraphDisplayInfo DisplayInfo;
+                Graph->GetSchema()->GetGraphDisplayInformation(*Graph, DisplayInfo);
+                const FString DisplayName = DisplayInfo.PlainName.ToString();
+                if (DisplayName.Equals(GraphName, ESearchCase::IgnoreCase))
+                {
+                    return Graph;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    inline UEdGraph* ResolveGraph(UBlueprint* Blueprint, const FString& GraphType, const FString& GraphName)
+    {
+        if (Blueprint == nullptr)
+        {
+            return nullptr;
+        }
+
+        if (GraphType.IsEmpty() || GraphType.Equals(TEXT("Event"), ESearchCase::IgnoreCase))
+        {
+            return EnsureEventGraph(Blueprint);
+        }
+
+        if (GraphType.Equals(TEXT("Function"), ESearchCase::IgnoreCase))
+        {
+            return FindGraphByName(Blueprint->FunctionGraphs, GraphName);
+        }
+
+        if (GraphType.Equals(TEXT("Macro"), ESearchCase::IgnoreCase))
+        {
+            return FindGraphByName(Blueprint->MacroGraphs, GraphName);
+        }
+
+        if (GraphType.Equals(TEXT("Delegate"), ESearchCase::IgnoreCase))
+        {
+            return FindGraphByName(Blueprint->DelegateSignatureGraphs, GraphName);
         }
 
         return nullptr;
@@ -336,5 +417,89 @@ namespace SUnrealMcpNodeCommandUtils
         }
 
         return NodeObject;
+    }
+
+    inline TSharedPtr<FJsonObject> BuildPinSummary(UEdGraphPin* Pin)
+    {
+        const TSharedRef<FJsonObject> PinObject = MakeShared<FJsonObject>();
+        if (Pin == nullptr)
+        {
+            return PinObject;
+        }
+
+        PinObject->SetStringField(TEXT("name"), Pin->PinName.ToString());
+        PinObject->SetStringField(TEXT("direction"), PinDirectionToString(Pin->Direction));
+        PinObject->SetStringField(TEXT("category"), Pin->PinType.PinCategory.ToString());
+        PinObject->SetStringField(TEXT("subCategory"), Pin->PinType.PinSubCategory.ToString());
+        PinObject->SetStringField(
+            TEXT("subCategoryObject"),
+            Pin->PinType.PinSubCategoryObject.IsValid() ? Pin->PinType.PinSubCategoryObject->GetPathName() : TEXT(""));
+        PinObject->SetBoolField(TEXT("isArray"), Pin->PinType.ContainerType == EPinContainerType::Array);
+        PinObject->SetBoolField(TEXT("isReference"), Pin->PinType.bIsReference);
+        PinObject->SetBoolField(TEXT("isConst"), Pin->PinType.bIsConst);
+        PinObject->SetBoolField(TEXT("isHidden"), Pin->bHidden);
+        PinObject->SetBoolField(TEXT("hasDefaultValue"), !Pin->DefaultValue.IsEmpty());
+        PinObject->SetStringField(TEXT("defaultValue"), Pin->DefaultValue);
+        PinObject->SetStringField(TEXT("defaultObject"), Pin->DefaultObject != nullptr ? Pin->DefaultObject->GetPathName() : TEXT(""));
+        PinObject->SetStringField(TEXT("defaultTextValue"), Pin->DefaultTextValue.ToString());
+
+        TArray<TSharedPtr<FJsonValue>> LinkedPins;
+        for (UEdGraphPin* LinkedPin : Pin->LinkedTo)
+        {
+            if (LinkedPin == nullptr)
+            {
+                continue;
+            }
+
+            const TSharedRef<FJsonObject> LinkedPinObject = MakeShared<FJsonObject>();
+            LinkedPinObject->SetStringField(TEXT("nodeId"), LinkedPin->GetOwningNodeUnchecked()->NodeGuid.ToString());
+            LinkedPinObject->SetStringField(TEXT("nodeTitle"), LinkedPin->GetOwningNodeUnchecked()->GetNodeTitle(ENodeTitleType::ListView).ToString());
+            LinkedPinObject->SetStringField(TEXT("pinName"), LinkedPin->PinName.ToString());
+            LinkedPinObject->SetStringField(TEXT("direction"), PinDirectionToString(LinkedPin->Direction));
+            LinkedPins.Add(MakeShared<FJsonValueObject>(LinkedPinObject));
+        }
+
+        PinObject->SetArrayField(TEXT("linkedTo"), LinkedPins);
+        return PinObject;
+    }
+
+    inline TSharedPtr<FJsonObject> BuildNodeDetail(UEdGraphNode* Node)
+    {
+        const TSharedRef<FJsonObject> NodeObject = BuildNodeSummary(Node).ToSharedRef();
+        NodeObject->SetStringField(TEXT("comment"), Node->NodeComment);
+        NodeObject->SetBoolField(TEXT("enabled"), Node->IsNodeEnabled());
+
+        TArray<TSharedPtr<FJsonValue>> Pins;
+        for (UEdGraphPin* Pin : Node->Pins)
+        {
+            Pins.Add(MakeShared<FJsonValueObject>(BuildPinSummary(Pin)));
+        }
+
+        NodeObject->SetArrayField(TEXT("pins"), Pins);
+        return NodeObject;
+    }
+
+    inline TSharedPtr<FJsonObject> BuildGraphSummary(UEdGraph* Graph, const FString& GraphType)
+    {
+        const TSharedRef<FJsonObject> GraphObject = MakeShared<FJsonObject>();
+        if (Graph == nullptr)
+        {
+            return GraphObject;
+        }
+
+        FString DisplayName = Graph->GetName();
+        if (Graph->GetSchema() != nullptr)
+        {
+            FGraphDisplayInfo DisplayInfo;
+            Graph->GetSchema()->GetGraphDisplayInformation(*Graph, DisplayInfo);
+            DisplayName = DisplayInfo.PlainName.ToString();
+        }
+
+        GraphObject->SetStringField(TEXT("name"), Graph->GetName());
+        GraphObject->SetStringField(TEXT("type"), GraphType.IsEmpty() ? TEXT("Event") : GraphType);
+        GraphObject->SetStringField(TEXT("class"), Graph->GetClass()->GetPathName());
+        GraphObject->SetStringField(TEXT("displayName"), DisplayName);
+        GraphObject->SetNumberField(TEXT("nodeCount"), Graph->Nodes.Num());
+        return GraphObject;
     }
 }

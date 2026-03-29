@@ -96,4 +96,15 @@ export function register(server: McpServer, context: ServerContext): void {
             event_type: z.string().optional().describe("具体事件类型，如 BeginPlay、Tick"),
         },
     });
+
+    registerCommandTool(server, context, {
+        name: "inspect_blueprint_graph",
+        description: "读取 Blueprint 指定图表中的节点、引脚和连线详情，可用于分析函数图逻辑",
+        inputSchema: {
+            blueprint_path: z.string().describe("目标 Blueprint 资产路径"),
+            graph_type: z.string().optional().describe("图表类型，如 Event、Function、Macro、Delegate"),
+            graph_name: z.string().optional().describe("图表名称；读取函数图时通常传函数名"),
+            include_pins: z.boolean().default(true).describe("是否返回节点引脚和连线详情"),
+        },
+    });
 }

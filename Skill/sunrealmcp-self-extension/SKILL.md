@@ -74,6 +74,30 @@ Before making changes, first identify these logical targets in the current works
 
 For plugin implementation work, default to editing only the in-project copy. Do not update the external repository copy by default unless the user explicitly asks for it.
 
+### Capability Audit Scope Rule
+
+When checking whether `SUnrealMcp` already has the needed capability but has not exposed it correctly, default to auditing only these two implementation surfaces:
+
+- `McpServer/src/tools`
+- `Plugins/SUnrealMcp/Source/SUnrealMcp` command implementations and command registration
+
+Treat these as the primary and usually sufficient audit targets: `tools` in `McpServer`, and `Command` implementations or registration in the active `SUnrealMcp` plugin.
+
+Do not expand the search scope by default to other project directories just to confirm capability presence.
+
+In particular, do not scan unrelated or high-cost directories such as:
+
+- `Binaries`
+- `Intermediate`
+- `Saved`
+- `.vs`
+- `node_modules`
+- unrelated plugins
+- unrelated MCP servers
+- external repository copies or mirror plugin directories
+
+Only widen the audit scope if the user explicitly says the active `SUnrealMcp` implementation is elsewhere, or if direct evidence inside the default `tools` or `Command` locations points to another required source-of-truth location.
+
 ### Source Of Truth Rule
 
 If both an external repository copy and a local active plugin copy exist, do not edit both by default.
@@ -95,12 +119,14 @@ In other words:
 
 Before adding anything, do these checks:
 
+- Restrict capability-audit search to `McpServer/src/tools` and the active plugin's `Command` implementations or registration under `Plugins/SUnrealMcp/Source/SUnrealMcp` by default.
 - Enumerate the MCP `tools` relevant to the current task.
 - Check whether the task can be solved by combining existing `tools`.
-- Check whether the plugin already has a similar capability under a different command name or without exposure.
+- Check whether the plugin already has a similar `Command` under a different name or without MCP exposure.
 - Check whether the problem can be solved by extending an existing `tool` with a new parameter or `mode` instead of adding a new `tool`.
 
 Do not add a new `tool` just because it seems convenient.
+Do not turn this step into a workspace-wide repository scan.
 
 ### 2. Perform Gap And Convergence Analysis
 
@@ -331,6 +357,27 @@ At minimum, confirm:
 - module dependencies are correct
 - the new or changed `command` is registered
 
+### Editor Rebuild Coordination Rule
+
+When the new or changed `tool` / `command` requires rebuilding the Unreal Editor target, do not assume the editor can be interrupted safely.
+
+If the editor may currently be in active use, first ask the user whether they want the agent to:
+
+1. automatically close the editor
+2. trigger the required build
+3. reopen the editor
+4. continue the original task after the editor is back
+
+Use this coordinated rebuild path when:
+
+- the active editor process must be closed for the build to succeed
+- the updated plugin or module will not be picked up reliably without restart
+- continuing the task depends on the rebuilt editor session
+
+If the user approves this flow, treat it as one continuous task rather than a stopping point. After reopening the editor, continue validation, refresh any affected runtime assumptions, and resume the original task.
+
+If the user does not approve automatic editor interruption, stop at the safe handoff point, explain what rebuild or restart is still required, and do not force-close the editor.
+
 ### Runtime Smoke Validation
 
 Before declaring the extension successful, at minimum confirm:
@@ -416,6 +463,7 @@ Stop and escalate only when:
 - the required change has become a protocol or architecture redesign
 - the `source of truth` is ambiguous and risky to guess
 - the current host cannot provide the `refresh` / `reconnect` capability the workflow depends on
+- rebuilding requires interrupting an editor session that may currently be in use and the user has not approved automatic close and reopen
 
 ## Escalation Rules
 
@@ -425,6 +473,7 @@ Pause and align with the user first when:
 - multiple widely used `tools` must be renamed or deleted
 - the correct `source of truth` is unclear
 - the change would create maintenance consequences far beyond the current task
+- the required editor rebuild may interrupt the user's active Unreal Editor session
 
 But do not stop just because a small `tool` / `command` pair needs to be added, or because a clearly stale temporary `tool` should be deprecated. The normal path is to make the smallest correct change, perform the convergence review, and keep going.
 
@@ -439,12 +488,14 @@ Whenever a capability gap or convergence trigger appears, follow this checklist:
 5. Make the minimum necessary changes in `McpServer`.
 6. Make the matching `command` changes in the Unreal plugin.
 7. Rebuild `McpServer`.
-8. Rebuild the Unreal plugin or project.
-9. Run a `smoke test` for the new or converged capability.
-10. Refresh `tool discovery` and explicitly reorient the agent to the new `tool surface`.
-11. Return to and finish the original task.
-12. Run an end-of-task convergence pass for temporary or overlapping `tools`.
-13. Persist or report the classification and convergence outcome.
+8. If rebuilding the Unreal plugin or project may interrupt an active editor session, ask whether to automatically close the editor, build, reopen it, and continue.
+9. Rebuild the Unreal plugin or project.
+10. If the coordinated editor rebuild path was used, reopen the editor and restore the task flow before continuing.
+11. Run a `smoke test` for the new or converged capability.
+12. Refresh `tool discovery` and explicitly reorient the agent to the new `tool surface`.
+13. Return to and finish the original task.
+14. Run an end-of-task convergence pass for temporary or overlapping `tools`.
+15. Persist or report the classification and convergence outcome.
 
 ## Completion Criteria
 
