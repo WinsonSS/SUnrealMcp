@@ -5,32 +5,6 @@
 
 namespace
 {
-    static FVector2D ReadVector2OrDefault(const TSharedPtr<FJsonObject>& Object, const FString& FieldName, const FVector2D& DefaultValue)
-    {
-        const TArray<TSharedPtr<FJsonValue>>* JsonArray = nullptr;
-        if (!Object.IsValid() || !Object->TryGetArrayField(FieldName, JsonArray) || JsonArray->Num() != 2)
-        {
-            return DefaultValue;
-        }
-
-        return FVector2D((*JsonArray)[0]->AsNumber(), (*JsonArray)[1]->AsNumber());
-    }
-
-    static FLinearColor ReadColorOrDefault(const TSharedPtr<FJsonObject>& Object, const FString& FieldName, const FLinearColor& DefaultValue)
-    {
-        const TArray<TSharedPtr<FJsonValue>>* JsonArray = nullptr;
-        if (!Object.IsValid() || !Object->TryGetArrayField(FieldName, JsonArray) || JsonArray->Num() != 4)
-        {
-            return DefaultValue;
-        }
-
-        return FLinearColor(
-            (*JsonArray)[0]->AsNumber(),
-            (*JsonArray)[1]->AsNumber(),
-            (*JsonArray)[2]->AsNumber(),
-            (*JsonArray)[3]->AsNumber());
-    }
-
     class FAddTextBlockToWidgetCommand final : public ISUnrealMcpCommand
     {
     public:
@@ -112,6 +86,33 @@ namespace
             Data->SetObjectField(TEXT("widget"), WidgetData);
             return FSUnrealMcpResponse::MakeSuccess(Request.RequestId, Data);
         }
+    private:
+        static FVector2D ReadVector2OrDefault(const TSharedPtr<FJsonObject>& Object, const FString& FieldName, const FVector2D& DefaultValue)
+        {
+            const TArray<TSharedPtr<FJsonValue>>* JsonArray = nullptr;
+            if (!Object.IsValid() || !Object->TryGetArrayField(FieldName, JsonArray) || JsonArray->Num() != 2)
+            {
+                return DefaultValue;
+            }
+
+            return FVector2D((*JsonArray)[0]->AsNumber(), (*JsonArray)[1]->AsNumber());
+        }
+
+        static FLinearColor ReadColorOrDefault(const TSharedPtr<FJsonObject>& Object, const FString& FieldName, const FLinearColor& DefaultValue)
+        {
+            const TArray<TSharedPtr<FJsonValue>>* JsonArray = nullptr;
+            if (!Object.IsValid() || !Object->TryGetArrayField(FieldName, JsonArray) || JsonArray->Num() != 4)
+            {
+                return DefaultValue;
+            }
+
+            return FLinearColor(
+                (*JsonArray)[0]->AsNumber(),
+                (*JsonArray)[1]->AsNumber(),
+                (*JsonArray)[2]->AsNumber(),
+                (*JsonArray)[3]->AsNumber());
+        }
+
     };
 
     const FSUnrealMcpCommandAutoRegistrar AddTextBlockToWidgetCommandRegistrar([]()
