@@ -29,5 +29,4 @@ public:
 
 private:
     static TArray<FSUnrealMcpCommandFactory>& GetFactories();
-    static TArray<FSUnrealMcpCommandFactory> ConsumeFactories();
 };

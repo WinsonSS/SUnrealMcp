@@ -153,21 +153,21 @@ args = ["D:/path/to/SUnrealMcp/McpServer/build/index.js"]
 - Agent 启动的是 `McpServer/build/index.js`
 - `McpServer` 再去连接 Unreal 插件监听的 TCP 地址
 
-### 在 Codex 中部署 `sunrealmcp-self-extension` Skill
+### 在 Codex 中部署 `sunrealmcp-unreal-editor-workflow` Skill
 
-如果你希望 Codex 在使用 `SUnrealMcp` 时，遇到真实能力缺口能够继续扩展 MCP 栈并在合适条件下收敛 `tool`，可以把这个 skill 部署到 Codex 的 skills 目录。
+如果你希望 Codex 在遇到 Unreal Editor 交互任务时，默认优先走 `SUnrealMcp` 工作流，并在存在真实能力缺口时继续扩展 MCP 栈、在合适条件下收敛 `tool`，可以把这个 skill 部署到 Codex 的 skills 目录。
 
 当前仓库中的 skill 位置：
 
 ```text
-.codex/skills/sunrealmcp-self-extension/
+.codex/skills/sunrealmcp-unreal-editor-workflow/
 ├─ SKILL.md
 └─ SKILL_cn.md
 ```
 
 典型部署方式：
 
-1. 将整个 `sunrealmcp-self-extension` 目录复制到 Codex 的 skills 根目录
+1. 将整个 `sunrealmcp-unreal-editor-workflow` 目录复制到 Codex 的 skills 根目录
 2. 保持目录名不变
 3. 确认目标目录下至少存在 `SKILL.md`
 4. 重启 Codex，或重新加载 skills
@@ -175,7 +175,7 @@ args = ["D:/path/to/SUnrealMcp/McpServer/build/index.js"]
 以 Windows 上的 Codex 默认目录为例：
 
 ```text
-C:\Users\<YourUser>\.codex\skills\sunrealmcp-self-extension\
+C:\Users\<YourUser>\.codex\skills\sunrealmcp-unreal-editor-workflow\
 ├─ SKILL.md
 └─ SKILL_cn.md
 ```
@@ -184,18 +184,20 @@ C:\Users\<YourUser>\.codex\skills\sunrealmcp-self-extension\
 
 这个 skill 主要在下面这类场景触发：
 
-- Codex 正在通过 `SUnrealMcp` 完成 Unreal 自动化任务
-- 现有 `tools` 不足以完成任务
-- 缺口是真实存在的，而不是调用方式错误
-- 目标是继续完成任务，而不是停在分析
+- 任务需要和 Unreal Editor、Blueprint、UMG、Actor、关卡或其他编辑器托管状态交互
+- `SUnrealMcp` 是默认应优先考虑的交互面
+- 现有 `tools` 足够时直接使用，不足时继续扩展
+- 目标是继续完成任务，而不是停在分析或只给手工方案
 
 部署完成后，Codex 的行为目标会变成：
 
+- 先识别这是不是 Unreal Editor 工作流任务
+- 默认优先尝试 `SUnrealMcp`
 - 先尝试复用现有 `tools`
 - 必要时同时改 `McpServer` 和 Unreal 插件
 - 重建、验证、刷新 `tool discovery`
 - 回到原始任务继续完成
-- 在满足条件时，对临时或重叠 `tools` 做收敛检查
+- 在满足条件时，对临时、候选或重叠 `tools` 做收敛检查和生命周期复查
 
 ### 通用 MCP Client 接入原则
 
@@ -465,21 +467,21 @@ args = ["D:/path/to/SUnrealMcp/McpServer/build/index.js"]
 
 You can adapt the path to your own machine, use a wrapper script, or use a relative path if your environment supports it. The important part is that the agent launches the built MCP server entrypoint.
 
-### Deploying the `sunrealmcp-self-extension` Skill in Codex
+### Deploying the `sunrealmcp-unreal-editor-workflow` Skill in Codex
 
 If you want Codex to continue when `SUnrealMcp` has a real capability gap, extend the MCP stack, and converge temporary or overlapping tools when appropriate, deploy the skill into Codex's skills directory.
 
 Skill location in this repository:
 
 ```text
-.codex/skills/sunrealmcp-self-extension/
+.codex/skills/sunrealmcp-unreal-editor-workflow/
 ├─ SKILL.md
 └─ SKILL_cn.md
 ```
 
 Typical deployment flow:
 
-1. Copy the entire `sunrealmcp-self-extension` directory into Codex's skills root.
+1. Copy the entire `sunrealmcp-unreal-editor-workflow` directory into Codex's skills root.
 2. Keep the folder name unchanged.
 3. Ensure `SKILL.md` exists in the deployed folder.
 4. Restart Codex or reload skills.
@@ -487,7 +489,7 @@ Typical deployment flow:
 Example Windows destination:
 
 ```text
-C:\Users\<YourUser>\.codex\skills\sunrealmcp-self-extension\
+C:\Users\<YourUser>\.codex\skills\sunrealmcp-unreal-editor-workflow\
 ├─ SKILL.md
 └─ SKILL_cn.md
 ```
@@ -638,3 +640,4 @@ That usually means:
 ## License
 
 See [LICENSE](LICENSE).
+

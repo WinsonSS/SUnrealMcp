@@ -98,7 +98,7 @@ const server = new McpServer({ name: "SUnrealMcp", version: "2.0.0" });
 server.registerTool(
     "ping",
     {
-        description: "测试 MCP Server 本身是否可用",
+        description: "Check whether the MCP server itself is available",
     },
     async () => {
         return {
@@ -150,6 +150,10 @@ async function registerAllTools(target: McpServer, serverContext: ServerContext)
 
     for (const modulePath of modulePaths) {
         const relativeModulePath = modulePath.slice(toolsDir.length + 1).replaceAll("\\", "/");
+        if (!relativeModulePath.includes("/")) {
+            continue;
+        }
+
         const imported = (await import(pathToFileURL(modulePath).href)) as Partial<ToolModule>;
 
         if (typeof imported.register !== "function") {
@@ -197,3 +201,4 @@ main().catch((error) => {
     });
     process.exit(1);
 });
+

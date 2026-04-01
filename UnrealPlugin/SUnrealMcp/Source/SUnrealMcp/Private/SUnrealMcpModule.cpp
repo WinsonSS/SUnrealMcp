@@ -3,6 +3,7 @@
 #include "Mcp/SUnrealMcpCommandRegistry.h"
 #include "Mcp/SUnrealMcpServer.h"
 #include "Mcp/SUnrealMcpTaskRegistry.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/MessageDialog.h"
 #include "SUnrealMcpSettings.h"
 
@@ -12,17 +13,42 @@
 IMPLEMENT_MODULE(FSUnrealMcpModule, SUnrealMcp)
 DEFINE_LOG_CATEGORY(LogSUnrealMcp);
 
+namespace
+{
+    static FAutoConsoleCommand GReloadSUnrealMcpCommandRegistry(
+        TEXT("SUnrealMcp.ReloadCommandRegistry"),
+        TEXT("Rebuilds the active SUnrealMcp command registry after Live Coding or other runtime code changes."),
+        FConsoleCommandDelegate::CreateLambda([]()
+        {
+            FSUnrealMcpModule* Module = FModuleManager::GetModulePtr<FSUnrealMcpModule>(TEXT("SUnrealMcp"));
+            if (Module == nullptr)
+            {
+                UE_LOG(LogSUnrealMcp, Warning, TEXT("SUnrealMcp module is not loaded; cannot rebuild command registry."));
+                return;
+            }
+
+            FString Error;
+            if (!Module->RebuildCommandRegistry(&Error))
+            {
+                UE_LOG(LogSUnrealMcp, Error, TEXT("Failed to rebuild SUnrealMcp command registry: %s"), *Error);
+                return;
+            }
+
+            UE_LOG(LogSUnrealMcp, Log, TEXT("SUnrealMcp command registry rebuilt successfully."));
+        }));
+}
+
 FSUnrealMcpModule::~FSUnrealMcpModule() = default;
 
 void FSUnrealMcpModule::StartupModule()
 {
-    CommandRegistry = MakeShared<FSUnrealMcpCommandRegistry>();
-    if (!FSUnrealMcpCommandAutoRegistrar::RegisterAll(CommandRegistry.ToSharedRef()))
+    FString RegistrationError;
+    if (!RebuildCommandRegistry(&RegistrationError))
     {
         UE_LOG(LogSUnrealMcp, Error, TEXT("Command registration failed; SUnrealMcp server will not start."));
         FMessageDialog::Open(
             EAppMsgType::Ok,
-            FText::FromString(CommandRegistry->GetRegistrationErrorSummary()));
+            FText::FromString(RegistrationError));
         CommandRegistry.Reset();
         return;
     }
@@ -57,6 +83,33 @@ void FSUnrealMcpModule::StartupModule()
     }
 
     UE_LOG(LogSUnrealMcp, Log, TEXT("Listening on %s:%d"), *ServerConfig.BindAddress, ServerConfig.Port);
+}
+
+bool FSUnrealMcpModule::RebuildCommandRegistry(FString* OutError)
+{
+    TSharedRef<FSUnrealMcpCommandRegistry> NewRegistry = MakeShared<FSUnrealMcpCommandRegistry>();
+    if (!FSUnrealMcpCommandAutoRegistrar::RegisterAll(NewRegistry))
+    {
+        const FString Summary = NewRegistry->GetRegistrationErrorSummary();
+        if (OutError != nullptr)
+        {
+            *OutError = Summary;
+        }
+        return false;
+    }
+
+    CommandRegistry = NewRegistry;
+    if (Server.IsValid())
+    {
+        Server->SetCommandRegistry(NewRegistry);
+    }
+
+    if (OutError != nullptr)
+    {
+        OutError->Reset();
+    }
+
+    return true;
 }
 
 void FSUnrealMcpModule::ShutdownModule()

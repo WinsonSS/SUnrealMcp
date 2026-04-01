@@ -33,6 +33,7 @@ public:
         const FSUnrealMcpServerConfig& InConfig,
         const TSharedRef<FSUnrealMcpCommandRegistry>& InRegistry,
         const TSharedRef<FSUnrealMcpTaskRegistry>& InTaskRegistry);
+    void SetCommandRegistry(const TSharedRef<FSUnrealMcpCommandRegistry>& InRegistry);
     void Stop();
 
 private:

@@ -63,7 +63,7 @@ FSUnrealMcpCommandAutoRegistrar::FSUnrealMcpCommandAutoRegistrar(FSUnrealMcpComm
 bool FSUnrealMcpCommandAutoRegistrar::RegisterAll(const TSharedRef<FSUnrealMcpCommandRegistry>& Registry)
 {
     bool bRegisteredAllCommands = true;
-    for (const FSUnrealMcpCommandFactory& Factory : ConsumeFactories())
+    for (const FSUnrealMcpCommandFactory& Factory : GetFactories())
     {
         if (!Registry->RegisterCommand(Factory()))
         {
@@ -77,12 +77,5 @@ bool FSUnrealMcpCommandAutoRegistrar::RegisterAll(const TSharedRef<FSUnrealMcpCo
 TArray<FSUnrealMcpCommandFactory>& FSUnrealMcpCommandAutoRegistrar::GetFactories()
 {
     static TArray<FSUnrealMcpCommandFactory> Factories;
-    return Factories;
-}
-
-TArray<FSUnrealMcpCommandFactory> FSUnrealMcpCommandAutoRegistrar::ConsumeFactories()
-{
-    TArray<FSUnrealMcpCommandFactory> Factories = MoveTemp(GetFactories());
-    GetFactories().Reset();
     return Factories;
 }

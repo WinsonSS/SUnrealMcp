@@ -15,6 +15,8 @@ public:
     virtual void StartupModule() override;
     virtual void ShutdownModule() override;
 
+    bool RebuildCommandRegistry(FString* OutError = nullptr);
+
 private:
     TSharedPtr<FSUnrealMcpCommandRegistry> CommandRegistry;
     TSharedPtr<FSUnrealMcpTaskRegistry> TaskRegistry;

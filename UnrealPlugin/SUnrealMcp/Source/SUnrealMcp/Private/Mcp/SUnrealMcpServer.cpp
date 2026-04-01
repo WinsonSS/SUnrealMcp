@@ -87,6 +87,11 @@ bool FSUnrealMcpServer::Start(
     return true;
 }
 
+void FSUnrealMcpServer::SetCommandRegistry(const TSharedRef<FSUnrealMcpCommandRegistry>& InRegistry)
+{
+    CommandRegistry = InRegistry;
+}
+
 void FSUnrealMcpServer::Stop()
 {
     if (TickHandle.IsValid())
