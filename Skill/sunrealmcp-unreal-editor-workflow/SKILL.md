@@ -1,591 +1,464 @@
+---
 name: sunrealmcp-unreal-editor-workflow
-description: Use this as the primary Unreal Editor workflow when a task needs to inspect, modify, generate, validate, or otherwise interact with Unreal Editor content. Default to SUnrealMcp as the interface layer for editor interaction, then reuse, extend, merge, deprecate, delete, or add tools and matching commands as needed, validate the stack, refresh tool discovery, and continue the original task instead of stopping at analysis.
+description: Use this when a user task is related to a UE project and must interact with Unreal Editor assets or editor objects. Default to SUnrealMcp first, use the existing MCP tool and plugin command surface, automatically add the minimum missing tool or command when capability is missing, rebuild or Live Code, refresh discovery, and then resume the original task until it is complete.
 ---
 
 # SUnrealMcp Unreal Editor Workflow
 
 ## Purpose
 
-Use this as the primary workflow whenever a task needs to interact with Unreal Editor content or state.
+Use this skill for UE-project tasks that need real interaction with Unreal Editor, Unreal assets, or editor objects.
 
-The default expectation is:
+The main rule is simple:
 
-1. Recognize that the task belongs to Unreal Editor automation or editor interaction.
-2. Prefer `SUnrealMcp` as the default interface layer for interacting with the editor.
-3. If the current `SUnrealMcp` surface is sufficient, use it directly.
-4. If a real capability gap exists, extend the stack and then continue the original task.
-5. If the `tool` surface has become duplicated, over-narrow, or stale, converge it before closing the task.
+1. If the task must touch Unreal Editor state or UE asset semantics, do not default to file-first analysis.
+2. Default to `SUnrealMcp` and try the current MCP `tool` surface first.
+3. If the required Unreal Editor operation is missing, add the minimum missing capability, rebuild or hot-reload it, refresh discovery, and then continue the original task.
+4. Stay in that loop until the original task is actually finished.
 
-The goal is not to accumulate `tools` endlessly. The goal is to keep `SUnrealMcp` as the default Unreal Editor automation surface while preserving a small, composable, maintainable, and accurate `tool` set.
+This skill is not only for "use existing tools". It is also the default recovery workflow for "the task is valid, but the current `McpServer` or plugin command surface is incomplete".
 
-## Core Intent
+## Trigger Conditions
 
-Follow this loop:
+Use this skill when both are true:
 
-1. Identify whether the user task requires interaction with Unreal Editor, Unreal assets, Blueprint graphs, UMG, actors, project settings, or other editor-managed state.
-2. Default to `SUnrealMcp` as the first interaction surface for that work.
-3. Try to solve the user's task with existing `tools`.
-4. Identify whether a real capability gap exists.
-5. Decide whether to reuse, extend, merge, deprecate, delete, or add a `tool`.
-6. Make the minimum necessary changes in:
-   - `McpServer`
-   - the active in-project plugin copy at `Plugins/SUnrealMcp`
-7. Rebuild and validate.
-8. Refresh the `tool` view.
-9. Return to the original task and finish it.
-10. If cleanup triggers apply, converge the `tool` surface before closing the task.
-
-## When To Use
-
-Use this workflow when the task clearly involves Unreal Editor interaction, Unreal content automation, or Unreal editor-side inspection or mutation.
-
-This includes situations where the agent has not yet called `SUnrealMcp`, but should strongly consider it first.
+- the user task is related to a UE project
+- the task needs interaction with Unreal Editor, UE assets, or editor-managed objects
 
 Typical triggers:
 
-- Blueprint creation, mutation, graph editing, or graph inspection
-- UMG widget creation, mutation, binding, or viewport-related work
-- Actor, level, or editor-world inspection and mutation
-- Project-side Unreal asset or input configuration changes
-- Tasks that need to inspect or modify editor-managed assets or state
-- Tasks where `SUnrealMcp` is the most natural interface even if the exact needed `tool` is not exposed yet
+- read, inspect, summarize, query, modify, create, compile, or connect Blueprint, Widget Blueprint, AnimBP, Data Asset, Level, Actor, Component, graph node, input mapping, or other UE asset/editor object
+- inspect graph logic, object metadata, references, hierarchy, generated classes, exposed properties, or editor state that cannot be trusted from raw file text alone
+- perform an Editor action such as spawn actor, inspect actors in level, compile Blueprint, add nodes, bind widget events, or other editor-executed operations
+- continue a UE task after discovering that the current SUnrealMcp capability is missing or incomplete
 
-Typical examples:
+## Do Not Use This Skill
 
-- The task needs Unreal Editor interaction, but the currently visible `SUnrealMcp` `tools` do not clearly cover it yet.
-- A Blueprint workflow needs a node operation that is not currently exposed.
-- `McpServer` has the `tool` concept, but the plugin lacks the matching `command`.
-- The plugin has the capability, but `McpServer` does not expose it as a `tool`.
-- A long-running workflow needs a task-aware `tool`, but no such capability exists yet.
-- Several overlapping `tools` now point at the same capability and should be merged or deprecated.
-- A temporary `tool` added to unblock a task should now be reviewed for cleanup.
+Do not use this skill by default when any of these is true:
 
-## When Not To Use
+- the task is only about normal source files, docs, configs, scripts, or build logic with no Unreal Editor interaction
+- the target is only plain text such as `md`, `json`, `toml`, `ini`, or ordinary source code and does not need UE asset semantics
+- the user explicitly wants static analysis only and does not want editor interaction or workflow execution
+- the real task is a protocol redesign, transport rewrite, or architecture refactor rather than completing a UE-editor-facing operation
 
-Do not use this skill when:
+## Core Operating Model
 
-- The task does not require Unreal Editor interaction at all.
-- Existing `tools` can already solve the problem in combination.
-- The issue is only wrong parameters, wrong call sequence, or misunderstanding.
-- The required work is a protocol-level redesign rather than `tool` / `command` extension or convergence.
-- The user explicitly asked for analysis only.
+Treat `SUnrealMcp` as a tool-command bridge:
 
-## Scope
+- `McpServer/src/tools/*` exposes MCP `tools`
+- `UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Private/Commands/*` implements Unreal-side `commands`
+- the command registry is the runtime source of truth for what the Editor can execute
 
-This skill supports different repository layouts. The paths below are common examples, not hardcoded requirements:
+Default mental model:
 
-- `McpServers/SUnrealMcp/McpServer`
-- `McpServers/SUnrealMcp/UnrealPlugin/SUnrealMcp`
-- `Plugins/SUnrealMcp`
+- the user asked for a UE task
+- the agent should try the current `tool` surface
+- if the needed operation is missing, the agent should extend the bridge instead of abandoning the task
+- after the bridge is fixed, the agent should immediately return to the original UE task
 
-Before making changes, first identify these logical targets in the current workspace:
+## Hard Constraints
 
-- the `McpServer` directory
-- the in-project `SUnrealMcp` plugin directory that is actually compiled and used
-- any external repository copy or mirror plugin directory that may also exist
+These rules are mandatory for this skill.
 
-For plugin implementation work, default to editing only the in-project copy. Do not update the external repository copy by default unless the user explicitly asks for it.
+### Constraint 0. In this repository, the default source of truth is already known
 
-### Capability Audit Scope Rule
+When this skill is being used inside the `SUnrealMcp` repository, do not behave as if the implementation location is unknown by default.
 
-When checking whether `SUnrealMcp` already has the needed capability but has not exposed it correctly, default to auditing only these two implementation surfaces:
+Default source of truth in this repo:
 
-- `McpServer/src/tools`
-- `Plugins/SUnrealMcp/Source/SUnrealMcp` command implementations and command registration
+- `McpServer/src/tools/*` for MCP tool exposure
+- `UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Private/Commands/*` for Unreal command implementation
+- the matching runtime registry and nearby helper files under the same plugin source tree
 
-Treat these as the primary and usually sufficient audit targets: `tools` in `McpServer`, and `Command` implementations or registration in the active `SUnrealMcp` plugin.
+Mandatory rules:
 
-Do not expand the search scope by default to other project directories just to confirm capability presence.
+- inspect these locations before claiming that the server-side or plugin-side entry point is unknown
+- do not say “I cannot add a new MCP function entry myself” before checking these locations
+- do not downgrade into peripheral inference just because the first search did not immediately reveal the exact file
+- if these locations exist and are writable, treat capability extension as available work, not as an external blocker
 
-In particular, do not scan unrelated or high-cost directories such as:
+Only classify the source of truth as ambiguous when there is direct evidence that the running Editor is using a different plugin copy or a different `McpServer` tree.
 
-- `Binaries`
-- `Intermediate`
-- `Saved`
-- `.vs`
-- `node_modules`
-- unrelated plugins
-- unrelated MCP servers
-- external repository copies or mirror plugin directories
+### Constraint 1. `SUnrealMcp` has no MCP resources
 
-Only widen the audit scope if the user explicitly says the active `SUnrealMcp` implementation is elsewhere, or if direct evidence inside the default `tools` or `Command` locations points to another required source-of-truth location.
+`SUnrealMcp` is not a resource-oriented MCP server.
+It has no `resources` and no `resource templates`.
+Its usable interaction surface is the `tool` to Unreal `command` bridge.
 
-### Source Of Truth Rule
+Mandatory rules:
 
-If both an external repository copy and a local active plugin copy exist, do not edit both by default.
+- use MCP `tools` first
+- inspect `McpServer/src/tools/*` first
+- inspect Unreal plugin `Commands/*` first
+- do not call `list_mcp_resources`
+- do not call `list_mcp_resource_templates`
+- do not plan around a future resource interface unless the user explicitly asks to design one
 
-Use this default order:
+If the current tool surface cannot complete the task, return directly to tool-command gap analysis.
+Do not create a resource-discovery branch, and do not infer from missing resources that raw asset inspection is the correct fallback.
 
-1. Edit the active in-project plugin copy that actually participates in compilation.
-2. Leave any external repository copy or mirror plugin unchanged unless the user explicitly asks to update it too.
-3. Sync both only if the user explicitly wants both updated in the same task.
+### Constraint 2. Confirmed UE assets must not degrade into raw `.uasset` analysis
 
-In other words:
+Once the target has been confirmed to be a Blueprint, Widget Blueprint, AnimBP, Data Asset, or another UE editor-managed asset:
 
-- The active in-project plugin is the default implementation target.
-- The external repository plugin is a manual sync target.
+- do not make `strings` on `.uasset` the main workflow
+- do not make repository-wide grep the main workflow
+- do not present byte-level clues as if they were editor-semantic truth
 
-### Domain Categories Are Not Fixed Taxonomy
+Allowed use of raw asset inspection:
 
-Directory or family names such as `Blueprint`, `Editor`, `Node`, `UMG`, `Project`, or `System` should be treated as the current organizational grouping for maintainability, not as immutable long-term taxonomy.
+- quick orientation when object identity is still uncertain
+- emergency clue gathering before designing a missing command
+- sanity checks that support, but do not replace, Editor-semantic operations
 
-The lifecycle layer is the stable structure:
+If the user needs graph semantics, node relationships, editor metadata, or asset mutation, the correct next step is to use or extend `SUnrealMcp`, not to deepen `.uasset` text extraction.
 
-- `core`
-- `stable`
-- `candidate`
-- `temporary`
+### Constraint 3. Asset-semantic requests must not degrade into peripheral inference
 
-The domain grouping is allowed to evolve over time. It may be regrouped, merged, split, or renamed when that makes the capability surface clearer and easier to maintain.
+When the user is asking about the asset itself, such as:
 
-## Core Workflow
+- what logic exists inside this Blueprint
+- what nodes, graphs, variables, bindings, or metadata it has
+- why this asset behaves a certain way
+- how to modify this asset safely
 
-### 1. Try Existing Capabilities First
+then source-code references, call sites, tags, comments, naming clues, or nearby usage patterns are not a valid substitute for reading the asset semantically.
 
-Before adding anything, do these checks:
+Mandatory rules:
 
-- Restrict capability-audit search to `McpServer/src/tools` and the active plugin's `Command` implementations or registration under `Plugins/SUnrealMcp/Source/SUnrealMcp` by default.
-- Enumerate the MCP `tools` relevant to the current task.
-- Check whether the task can be solved by combining existing `tools`.
-- Check whether the plugin already has a similar `Command` under a different name or without MCP exposure.
-- Check whether the problem can be solved by extending an existing `tool` with a new parameter or `mode` instead of adding a new `tool`.
+- do not treat surrounding C++ references as a successful answer to an asset-semantic request
+- do not stop at “I can infer how it is probably used”
+- do not reframe “read the Blueprint” into “analyze who references the Blueprint”
+- do not treat ALS flow inference as completion when the user asked for the Blueprint's own logic
 
-Do not add a new `tool` just because it seems convenient.
-Do not turn this step into a workspace-wide repository scan.
+Allowed use of peripheral inference:
 
-### 2. Perform Gap And Convergence Analysis
+- to estimate what missing command should be added
+- to prioritize which graph, function, or metadata view is needed first
+- to provide temporary orientation while implementing the missing Unreal capability
 
-Classify the missing capability or cleanup target as one of the following:
+If the requested answer depends on the Blueprint's own graphs, nodes, properties, bindings, or editor metadata, and the current tool surface cannot read them, the workflow must classify this as missing capability and extend `SUnrealMcp`.
 
-- `server_only`
-  The plugin can conceptually do it, but `McpServer` does not expose it.
-- `plugin_only`
-  `McpServer` can have the `tool` shape, but the plugin lacks the `command`.
-- `both_missing`
-  Both sides are missing it.
-- `wrong_abstraction`
-  The stack already has related capability, but the abstraction is too narrow, fragmented, overlapping, or stale.
+## Execution Loop
 
-Design only the minimum capability needed to complete the original user task. Do not casually turn this into a broad framework unless the current task truly requires that.
+Use this loop as the primary workflow, not as a fallback.
 
-### 3. Choose The Smallest Correct Change
+### Step 1. Freeze the original task
+
+Before making capability changes, capture the original user goal in one sentence and keep it stable.
+
+Examples:
+
+- inspect why a Blueprint graph behaves a certain way
+- add a widget binding in a Widget Blueprint
+- create or modify an actor in the current level
+- read or change properties on a Blueprint or component
+
+All capability work exists only to unblock that original task.
+
+### Step 2. Decide whether this is an Unreal Editor workflow
+
+If the target is a UE asset or editor object, enter this workflow immediately.
+
+Default to `unknown Unreal object` when the user gives only a UE-style name. Identify the object type first instead of assuming it is a normal file or C++ symbol.
+
+Priority order:
+
+1. determine whether it is a Blueprint, Widget Blueprint, AnimBP, Data Asset, Actor, Level object, graph node target, or another editor-managed object
+2. determine which Editor operation is required
+3. only use generic source search as support when the Unreal object identity is still unclear
+
+If it is confirmed to be a UE asset or editor object, stop treating raw file search as the primary path.
+
+### Step 3. Establish the runtime target
+
+Before editing code, identify the active execution target:
+
+- the UE project involved in the task
+- the `McpServer` instance or source tree that provides the MCP tools
+- the `SUnrealMcp` plugin copy that is actually loaded by the running Unreal Editor
+- whether the Editor is open and whether Live Coding is available
+
+If multiple plugin copies exist, default to the copy that the running Editor is really using.
+Do not silently edit mirror copies or backup copies.
+
+When the active source of truth is unclear, pause only long enough to resolve that ambiguity.
+Inside this repository, do not call it unclear until the default `McpServer/src/tools` and `UnrealPlugin/SUnrealMcp/.../Commands` locations have actually been checked.
+
+### Step 4. Try existing capability first
+
+Always attempt the smallest existing capability path first:
+
+1. inspect the current `tool` surface
+2. see whether an existing tool already solves the task
+3. see whether an existing command already exists under a nearby name or family
+4. prefer parameter or `mode` extension over a brand new tool
+
+Do not add a new tool just because the first obvious tool name does not exist.
+Do not switch to `list_mcp_resources`, `list_mcp_resource_templates`, `grep`, or `strings` as the new primary path just because the first tool attempt failed.
+
+### Step 5. Classify the gap
+
+If the task cannot proceed, classify the failure before coding.
+
+Use one of these buckets:
+
+- `no_gap`: the current tools already support the task and the issue is only wrong tool choice or wrong parameters
+- `server_only`: Unreal plugin command exists, but `McpServer` does not expose the needed tool or mapping
+- `plugin_only`: `McpServer` expects the operation, but the Unreal plugin lacks the command or runtime behavior
+- `both_missing`: neither side has the required capability
+- `reload_only`: code exists, but the running Editor session or registry has not picked it up yet
+- `wrong_abstraction`: the requested operation should be solved by extending an existing tool or command rather than creating a separate one
+
+Design only the minimum capability needed to complete the frozen original task.
+
+Failure routing rules:
+
+- if a tool call fails because the command is unknown or absent, classify it as `plugin_only` or `both_missing`
+- if the plugin command exists but no MCP tool exposes it cleanly, classify it as `server_only`
+- if a task suggests using MCP resources, reject that path for `SUnrealMcp` and return to gap classification
+- if raw `.uasset` inspection only yields names, strings, or partial metadata but not the editor semantics the task needs, classify the situation as missing Unreal capability rather than “analysis complete”
+- if surrounding code search only yields references, call sites, asset paths, or inferred behavior but not the asset's own editor semantics, classify the situation as missing Unreal capability rather than “analysis complete”
+- if the agent has not yet inspected the default tool and command source trees in this repository, it must not claim that capability extension is unavailable
+
+### Step 6. Apply the minimum capability change
 
 Use this priority order:
 
-1. Reuse an existing `tool`.
-2. Extend an existing `tool` with backward-compatible parameters or `mode`.
-3. Merge two or more overly narrow `tools` into a more general `tool`.
-4. Deprecate or delete a stale `tool` if another `tool` already covers its value.
-5. If the above are not enough, add a new `tool` and matching `command`.
+1. `reuse`
+2. `extend`
+3. `merge`
+4. `add`
+5. `deprecate` or `delete` only when it is clearly safe and directly helpful
 
-If a new `tool` is required, it should be:
+Default rules:
 
-- narrowly scoped
-- clearly named
-- consistent with existing `tool` families
-- easy to discover and understand from the name alone
+- prefer capability-shaped names, not task-shaped names
+- prefer adding one parameter or one `mode` when that keeps the abstraction clean
+- keep the MCP `tool` contract aligned with the Unreal `command` contract
+- keep changes narrow enough that they can be validated quickly and then reused immediately
 
-## Tool Hygiene And Convergence Policy
+### Step 7. Edit both sides when needed
 
-Too many `tools` degrade the agent's tool selection quality. Every `tool` change must be treated as both a capability decision and a maintenance decision.
+When a capability change is required, update the correct surface:
 
-### Tool Lifecycle Classes
+For `McpServer`:
 
-`core`
+- add or extend the tool definition in `McpServer/src/tools/core`, `stable`, `candidate`, or `temporary`
+- keep naming consistent with existing families such as `blueprint`, `editor`, `node`, `umg`, `project`, or `system`
+- use a clear schema and stable parameter names
+- map tool parameters to the exact Unreal command contract
 
-- broadly useful across many tasks
-- foundational to other workflows
-- not a likely deletion candidate
+For Unreal plugin:
 
-`stable`
+- add or extend the command implementation under `UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Private/Commands/...`
+- keep command names exactly aligned with what the `McpServer` expects
+- register the command so the runtime registry can execute it
+- return structured, actionable errors
 
-- repeatedly proven valuable across multiple independent tasks
-- naming, `schema`, and behavior are stable enough to be part of the long-term capability surface
-- should be maintained as long-term supported `tool` / `command` surface
+Do not change protocol or transport skeletons unless the task is truly blocked there.
 
-`candidate`
+## Build And Reload Policy
 
-- survived at least one convergence review and should not be deleted immediately
-- likely useful in future tasks, but not yet proven enough to become long-term stable capability
-- is an observation layer between `temporary` and `stable`, not a permanent parking lot
+After changing capability, do not jump back to the user task until the new path is actually loadable.
 
-`temporary`
+### Preferred order
 
-- mainly added to unblock the current task
-- narrow, project-shaped, or likely replaceable
-- must be reviewed before the task closes or immediately after the original task is complete
-- does not imply long-term support by default
+1. build or validate `McpServer`
+2. apply Unreal-side code changes
+3. use `Live Coding` first when the Editor is already open and the change is suitable for hot reload
+4. if Live Coding is not enough, close the Editor and do a full rebuild
+5. refresh command registration
+6. refresh MCP tool discovery if needed
+7. rerun the blocked part of the original task
 
-### Default Rule
+### Current-session execution policy
 
-Default to not adding a new `tool`.
+Treat “formal capability exists in code” and “current session can invoke it as an MCP tool” as separate questions.
 
-If the problem can be solved by:
+Mandatory rules:
 
-- a better prompt
-- using a different existing `tool`
-- a small parameter extension
-- combining multiple existing `tools`
+- if the current session can refresh the new capability, do so and continue through the formal MCP tool path
+- if the current session cannot refresh the new MCP tool surface, still complete the formal code change first
+- after the formal code change is in place, use a temporary execution bridge in the current session when needed instead of downgrading to peripheral inference
 
-then do that instead.
+The preferred temporary bridge is a local script or PowerShell invocation that directly exercises the newly added capability through the real project runtime.
+This bridge is for continuing the blocked task in the current session only.
+It does not replace the formal `McpServer` tool definition.
 
-### Convergence Triggers
+### Live Coding first
 
-Run a convergence review when any of the following happens:
+Prefer Live Coding when:
 
-- A new `tool` is about to be added.
-- Multiple `tools` overlap semantically.
-- A `tool` name has become project-shaped instead of capability-shaped.
-- The number of `tools` in a domain becomes hard to scan.
-- A temporary `tool` was added during the current task.
-- The original user task has finished and this turn added or changed temporary capability.
-- A `tool` silently became a thin wrapper around another `tool` or workflow.
+- the Editor is already open
+- the change is a normal command implementation or nearby helper change
+- there is no evidence that a full restart is required
 
-### Convergence Decision Rule
+### Escalate to full rebuild when needed
 
-When a trigger fires, explicitly decide whether each candidate `tool` should:
+Use close-editor plus full rebuild when any of these is true:
+
+- Live Coding fails
+- the change is not safely hot-reloadable
+- registration or module initialization is not refreshed correctly after Live Coding
+- the running Editor still cannot execute the command after a reload attempt
+
+If a full rebuild will interrupt the user's current Editor session, align with the user first.
+Otherwise, default to finishing the unblock automatically.
+
+### When MCP tool discovery cannot refresh in-place
+
+If the Unreal-side command is ready but the current session still cannot see the newly added MCP tool:
+
+1. confirm the formal tool and command implementation is correct
+2. use a temporary script or shell bridge to invoke the new capability in the current session
+3. continue the original task with that bridge
+4. report clearly that the formal MCP tool will require session refresh or rediscovery for future direct use
+
+Do not treat “current session cannot see the new tool yet” as permission to switch to raw asset inspection or peripheral inference.
+
+## Runtime Refresh Rules
+
+After Unreal-side changes, refresh runtime state explicitly.
+
+Minimum expectations:
+
+- the command is compiled into the active plugin
+- the command is registered in the runtime command registry
+- the MCP side can see the intended tool surface
+- a small smoke call proves the bridge works
+
+Use the existing `reload_command_registry` capability when appropriate.
+Do not assume a newly added command is available until it has been reloaded or rebuilt into the running session.
+
+If the current session cannot discover the new MCP tool after formal refresh attempts:
+
+- verify the command itself through a temporary local bridge
+- verify the end-to-end task path through that bridge if needed
+- keep the formal MCP tool code in place for the next refreshed session
+
+The inability to refresh discovery in-place is a session limitation, not evidence that the capability design was wrong.
+
+## Resume Rule
+
+After the missing capability has been validated, immediately return to the original task.
+
+Do not stop after reporting that:
+
+- a new tool was added
+- a new command was added
+- Live Coding succeeded
+- the registry reloaded successfully
+
+Those are intermediate milestones only. The workflow is not done until the original UE task is done.
+
+If the original task was to read, inspect, or explain a Blueprint or other UE asset semantically, the workflow is still incomplete until that asset has actually been read semantically through `SUnrealMcp` and the answer is based on that result.
+
+If the formal MCP tool is not yet callable in the current session, resume the original task through the temporary execution bridge rather than stopping early.
+
+## Search And Inspection Rules
+
+Use code search as support, not as the primary execution path, when the task is really about UE assets.
+
+If the target is already confirmed to be a Blueprint, Widget Blueprint, graph, or other editor object:
+
+- raw `.uasset` inspection is only a clue
+- generic file scanning is only a clue
+- normal text search is only a clue
+- resource-style MCP entry points are not applicable to `SUnrealMcp`
+- surrounding source references are only clues unless the user explicitly asked for reference analysis
+
+Prefer Editor-semantic operations through `SUnrealMcp` whenever the task depends on actual asset meaning or editor state.
+
+When the agent discovers an asset path such as `Content/.../*.uasset`, the next decision must be:
+
+1. is there already a tool or command that can inspect or mutate this asset semantically?
+2. if not, what is the minimum tool or command addition needed?
+
+That discovery must not automatically trigger a raw asset parsing workflow.
+That discovery also must not automatically trigger a “look at surrounding C++ logic instead” workflow when the user's target is the asset itself.
+
+Default search boundaries when code inspection is necessary:
+
+- include `McpServer/src/tools`
+- include `UnrealPlugin/SUnrealMcp/Source/SUnrealMcp`
+- exclude `Intermediate`, `Binaries`, `Saved`, `.vs`, `DerivedDataCache`, `node_modules`, and irrelevant mirror copies unless direct evidence says otherwise
+
+## Tool Lifecycle And Convergence
+
+Do not grow the tool surface carelessly.
+
+### Lifecycle guidance
+
+- `core`: essential system or workflow plumbing
+- `stable`: well-shaped, reusable capability that should be a normal default
+- `candidate`: useful but still settling capability
+- `temporary`: short-lived unblocker created mainly to finish the current task
+
+### Convergence rule
+
+Whenever a new tool or command is introduced, decide whether it should be:
 
 - `keep`
 - `merge`
+- `promote`
 - `deprecate`
 - `delete`
 
-Do not leave the answer implicit.
-
-The purpose of a convergence review is to decide whether a capability should keep existing, and in what form.
-
-A convergence review by itself is not enough to promote something directly to `stable`. At most, one review can show that a `tool`:
-
-- should not keep existing
-- should be merged
-- should be deprecated
-- should remain under observation
-
-If a `temporary` `tool` survives the review, default to moving it to `candidate`, not directly to `stable`.
-
-### Tool Inventory Rule
-
-`Tool` classification and convergence decisions must not live only in short-term reasoning.
-
-When a task adds, merges, deprecates, or deletes a `tool`, record the decision in a lightweight `tool inventory` note if the workspace already has one for `SUnrealMcp`. Prefer a file named `tool-inventory.md` near the persisted `tool` definitions or in the `SUnrealMcp` root. If no such file exists, do one of the following:
-
-- add a minimal inventory file if the current task is already changing the repository that should persist `tool` definitions
-- otherwise include the classification and convergence recommendation explicitly in the final summary
-
-At minimum, persist:
-
-- `tool` name
-- classification: `core`, `stable`, `candidate`, or `temporary`
-- action: `keep`, `merge`, `deprecate`, or `delete`
-- short reason
-
-Preferred minimal entry format:
-
-```md
-- tool: <name>
-  classification: <core|stable|candidate|temporary>
-  action: <keep|merge|deprecate|delete>
-  reason: <short reason>
-```
-
-### Convergence Questions
-
-For each candidate `tool`, ask at least:
-
-- Will other future tasks likely need it?
-- Is the name project-specific instead of capability-specific?
-- Can existing `tools` compose to replace it?
-- Is it only wrapping a sequence that adds almost no value?
-- Does the maintenance cost on both sides exceed the benefit?
-- Would removing or merging it make the overall `tool` surface easier for future agents to choose from?
-- Are the input/output `schema` and behavior actually stable, or likely to change again soon?
-- Was it only useful in this one task, or has it already shown cross-task reuse value?
-- Does validation go beyond "worked once" and include a credible smoke path?
-
-If the answers suggest low reuse, high overlap, and high maintenance cost, prefer `merge`, `deprecate`, or `delete` over `keep`.
-
-If the answers only justify "keep observing this" but do not justify "make this part of the long-term surface", classify it as `candidate`, not `stable`.
-
-### Promotion Rules
-
-Default promotion path:
-
-`temporary` -> `candidate` -> `stable`
-
-#### `temporary` -> `candidate`
-
-Require all of the following:
-
-- the current convergence review does not conclude `merge`, `deprecate`, or `delete`
-- there is no strong semantic overlap with an existing `stable` or `candidate` capability
-- it is not just a one-task hardcoded workflow script
-- it has at least a minimal validation path, including a credible `smoke test`
-
-#### `candidate` -> `stable`
-
-Require all of the following:
-
-- it has proven useful across multiple independent tasks
-- the name is capability-shaped rather than project-shaped or task-shaped
-- the input/output `schema` and behavior are mostly stable
-- the `McpServer` `tool` and Unreal plugin `command` contract are clear and unlikely to churn
-- maintainers are willing to treat it as part of the long-term supported surface
-
-If that evidence is missing, keep it as `candidate` instead of promoting it just because it looked useful once.
-
-### Allowed Convergence Outcomes
-
-Preferred order:
-
-1. Merge when possible.
-2. Use `deprecate` when immediate deletion is still uncertain.
-3. Delete only when there is no expected dependency.
-
-Do not casually delete or rename widely used `tools`.
-
-### End-Of-Task Convergence Rule
-
-Before closing a task that added or materially changed a `tool`, perform a final convergence pass.
-
-At minimum:
-
-- review all `temporary` `tools` touched in this task
-- review whether any `candidate` `tools` touched in this task now satisfy promotion criteria
-- review overlapping `tools` in the same family
-- decide whether each one should `keep`, `merge`, `deprecate`, or `delete`
-- decide whether any `temporary -> candidate` or `candidate -> stable` promotion should happen
-- persist or report the result
-
-## McpServer-Side Rules
-
-When editing `McpServer`:
-
-- Keep naming aligned with existing Blueprint, Editor, Node, Project, and UMG `tool` families.
-- Keep parameter names stable and clear.
-- Make the `schema` strong enough to guide the agent, but do not over-constrain valid inputs without backend need.
-- Ensure the `tool` definition matches the real plugin `command` contract.
-- Keep convergence-safe migration in mind when changing or retiring a `tool`.
-- Do not touch the `protocol` and `transport` skeleton unless the task explicitly requires it.
-
-Default allowed server-side write scope:
-
-- `tool definitions`
-- `runtime tool helpers`
-- `tool registration`
-- `tests` directly related to the new capability or convergence change
-
-Do not change these skeleton-level parts by default:
-
-- `transport framing`
-- `request/response envelope` structure
-- `connection lifecycle`
-- `protocol versioning`
-
-If a `tool` returns a `task handle`, make sure the `runtime helper` behavior and response expectations still match.
-
-## Unreal Plugin-Side Rules
-
-When editing the Unreal plugin:
-
-- The `command` string must match what `McpServer` expects.
-- Request parsing, validation, and response shape must stay consistent with the MCP server contract.
-- Prefer the minimum necessary `command` implementation instead of speculative abstraction.
-- Follow the existing `SUnrealMcp` `module` / `command` / `helper` style.
-- Keep errors structured and actionable.
-- When converging `tools`, preserve or intentionally bridge any remaining plugin-side dependency until the migration is complete.
-
-Default allowed plugin-side write scope:
-
-- `command registration`
-- `command implementation`
-- `helper utilities` directly supporting the `command`
-- module dependency updates needed for the new `command`
-
-Do not casually refactor these skeleton-level parts:
-
-- `server skeleton`
-- `task registry model`
-- core `transport` behavior
-
-If a `command` edits assets or Blueprint graphs, make sure it actually performs the behavior promised by the `tool` description instead of only returning a success-like response.
-
-## Validation Workflow
-
-After implementation, validate first and only then return to the original task.
-
-### McpServer Validation
-
-At minimum, usually run:
-
-```powershell
-cd <McpServer directory>
-npm run build
-```
-
-If relevant tests exist in the touched area, run them too.
-
-### Unreal Plugin Validation
-
-Build the plugin or owning project using the Unreal build workflow for the current workspace.
-
-At minimum, confirm:
-
-- the code compiles
-- module dependencies are correct
-- the new or changed `command` is registered
-
-### Editor Rebuild Coordination Rule
-
-When the new or changed `tool` / `command` requires rebuilding the Unreal Editor target, do not assume the editor can be interrupted safely.
-
-If the editor may currently be in active use, first ask the user whether they want the agent to:
-
-1. automatically close the editor
-2. trigger the required build
-3. reopen the editor
-4. continue the original task after the editor is back
-
-Use this coordinated rebuild path when:
-
-- the active editor process must be closed for the build to succeed
-- the updated plugin or module will not be picked up reliably without restart
-- continuing the task depends on the rebuilt editor session
-
-If the user approves this flow, treat it as one continuous task rather than a stopping point. After reopening the editor, continue validation, refresh any affected runtime assumptions, and resume the original task.
-
-If the user does not approve automatic editor interruption, stop at the safe handoff point, explain what rebuild or restart is still required, and do not force-close the editor.
-
-### Runtime Smoke Validation
-
-Before declaring the extension successful, at minimum confirm:
-
-- the MCP server can start
-- the agent can see the new, changed, deprecated, or merged `tool`
-- a small `smoke call` succeeds
-- if a `task` flow is involved, the `status` path still works
-
-### Tool Refresh Rule
-
-After changing `tool` definitions, do not assume the current agent will automatically understand the new `tool surface`.
-
-Treat tool refresh as a separate step:
-
-1. rebuild the `server`
-2. if the MCP server is already running, restart it
-3. ensure the host reconnects to the `server`
-4. run a fresh `tool discovery`
-5. before resuming the original task, explicitly tell the agent which `tool` was added, removed, merged, deprecated, or changed
-
-This is especially important when:
-
-- a new `tool` was added
-- the `tool` kept the same name but changed parameters
-- the parameters stayed the same but the behavior changed
-- a `tool` was merged, deprecated, or deleted
-
-The current agent may still be carrying stale `tool` memory. Without an explicit refresh, it may continue acting on outdated assumptions.
-
-For hosts that cache or delay `tool` discovery, use this practical refresh sequence:
-
-1. rebuild the `server`
-2. restart the MCP server process
-3. reconnect the host
-4. start a fresh `tool discovery`
-5. continue the original task with a short `reorientation note`
-
-If the current session cannot reliably refresh the `tool` view, treat that as a `workflow limitation` and use a fresh session or explicit reconnect instead of assuming the system will refresh implicitly.
-
-### Tool Change Strategy
-
-Prefer incremental, low-surprise changes.
-
-Prefer to:
-
-- add a clearly named new `tool` rather than silently changing the meaning of an old one
-- extend `schema` in backward-compatible ways
-- avoid reusing an old `tool` name for materially different behavior
-- converge by `merge` or `deprecate` before `delete` when future callers may still exist
-
-If an existing `tool` must change in a breaking way, treat it as a workflow that requires explicit refresh and reorientation rather than a silent replacement.
-
-## Return To The Original Task
-
-This skill is not complete just because the new `tool` compiles.
-
-After validation, immediately return to the original user task and continue with the new capability until the original task is actually complete.
-
-Do not stop at states like:
-
-- "`tool` has been added"
-- "the plugin compiles now"
-- "you can manually call this `tool` now"
-
-This workflow is successful only when the original task is complete or a real external `blocker` remains.
-
-## Failure Handling
-
-If the failure is still under the agent's control, do not stop at the first failed attempt.
-
 Default behavior:
 
-- if `McpServer` `build` fails, fix the server-side issue and rebuild
-- if Unreal plugin compilation fails, fix the plugin-side issue and rebuild
-- if both sides compile but the `smoke test` fails, inspect the contract mismatch and iterate
-- if the new capability works but the original task still fails, continue the original task
-- if convergence exposes overlapping or stale `tools`, keep iterating until the correct `keep`, `merge`, `deprecate`, or `delete` outcome is clear
+- avoid creating project-specific one-off names
+- prefer folding overlap back into an existing family
+- do not promote to `stable` unless the capability is clearly reusable and well-shaped
 
-Stop and escalate only when:
+## When To Pause And Align With The User
 
-- the `blocker` is outside the workspace
-- the required change has become a protocol or architecture redesign
-- the `source of truth` is ambiguous and risky to guess
-- the current host cannot provide the `refresh` / `reconnect` capability the workflow depends on
-- rebuilding requires interrupting an editor session that may currently be in use and the user has not approved automatic close and reopen
+Continue automatically by default. Pause only for decisions with real downside.
 
-## Escalation Rules
+Ask or align when any of these is true:
 
-Pause and align with the user first when:
+- the active UE project or active plugin copy is ambiguous
+- the task would close the user's live Unreal Editor session and that interruption matters
+- the change would be destructive to user content, not just tooling
+- the change would broaden into protocol redesign or large-scale refactor
+- the best abstraction choice has non-obvious long-term consequences
 
-- a protocol-level redesign is required
-- multiple widely used `tools` must be renamed or deleted
-- the correct `source of truth` is unclear
-- the change would create maintenance consequences far beyond the current task
-- the required editor rebuild may interrupt the user's active Unreal Editor session
+Do not pause merely because the exact MCP tool file or command file was not obvious on the first pass.
+Search the default source-of-truth directories first and keep moving.
 
-But do not stop just because a small `tool` / `command` pair needs to be added, or because a clearly stale temporary `tool` should be deprecated. The normal path is to make the smallest correct change, perform the convergence review, and keep going.
-
-## Execution Checklist
-
-Whenever a capability gap or convergence trigger appears, follow this checklist:
-
-1. Restate the original task and the missing capability or overlapping `tool`.
-2. Check whether an existing `tool` already solves it.
-3. Decide `keep`, `reuse`, `extend`, `merge`, `deprecate`, `delete`, or `add`.
-4. Classify each affected `tool` as `core`, `reusable`, or `temporary`.
-5. Make the minimum necessary changes in `McpServer`.
-6. Make the matching `command` changes in the Unreal plugin.
-7. Rebuild `McpServer`.
-8. If rebuilding the Unreal plugin or project may interrupt an active editor session, ask whether to automatically close the editor, build, reopen it, and continue.
-9. Rebuild the Unreal plugin or project.
-10. If the coordinated editor rebuild path was used, reopen the editor and restore the task flow before continuing.
-11. Run a `smoke test` for the new or converged capability.
-12. Refresh `tool discovery` and explicitly reorient the agent to the new `tool surface`.
-13. Return to and finish the original task.
-14. Run an end-of-task convergence pass for temporary or overlapping `tools`.
-15. Persist or report the classification and convergence outcome.
+Do not pause just because a new tool or command must be added.
+That is a normal part of this workflow.
 
 ## Completion Criteria
 
-This workflow is complete only when all of the following are true:
+This workflow is complete only when all of these are true:
 
-- The original user task is complete, or only a real external `blocker` remains.
-- The added, changed, merged, deprecated, or deleted MCP capability is implemented consistently on both sides.
-- The `tool` contract and plugin `command` behavior are consistent.
-- The refreshed session can see the intended `tool surface`.
-- All temporary or overlapping `tools` touched by the task have been reviewed for convergence.
-- Any needed classification or convergence conclusion has been persisted or explicitly reported.
-- The user receives a concise summary covering:
-  - what capability was missing or overlapping
-  - what was added, changed, merged, deprecated, or deleted
-  - how it was validated
-  - whether any temporary items or follow-up cleanup remain
+- the original user task is complete, or only a real external blocker remains
+- the needed Unreal operation works through the active SUnrealMcp bridge
+- the `tool` contract and plugin `command` behavior match
+- any new or changed command is compiled, registered, and discoverable
+- any temporary capability introduced during the turn has an explicit convergence decision
+- the agent has returned to the original task instead of stopping at infrastructure completion
+- asset-semantic requests are answered from actual asset-semantic reads, not only from peripheral inference
+- if the current session could not directly consume the new MCP tool, the original task was still completed through a temporary execution bridge and that limitation was stated explicitly
+
+## Compact Pseudocode
+
+```text
+if task is UE-project-related and needs Unreal Editor interaction:
+    freeze original task
+    identify active UE project, active plugin copy, and active McpServer surface
+    while original task is not complete:
+        try existing SUnrealMcp tools and commands
+        if blocked by missing capability:
+            classify the gap
+            implement the minimum tool and/or command change
+            Live Code or rebuild as needed
+            reload command registry and refresh discovery
+            if current session can call the new MCP tool:
+                run a smoke check through the formal tool
+            else:
+                use a temporary script or shell bridge
+                run a smoke check through that bridge
+        resume the original task
+```
