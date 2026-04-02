@@ -1,0 +1,23 @@
+{
+  "name": "sunrealmcp-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Skill-embedded CLI for driving SUnrealMcp-enabled Unreal Editor instances",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "typescript": "^5.9.3"
+  },
+  "bin": {
+    "sunrealmcp-cli": "./dist/sunrealmcp-cli.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "src",
+    "tsconfig.json"
+  ]
+}
