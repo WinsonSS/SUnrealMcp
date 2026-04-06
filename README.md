@@ -14,8 +14,6 @@ SUnrealMcp 当前推荐的使用方式是：
 - `Skill`
   负责告诉 Agent 何时进入 Unreal 工作流、如何选择命令类别、如何扩展能力、以及如何通过内置 CLI 连接目标编辑器
 
-根目录里的 `McpServer/` 目前保留为迁移参考，不再是推荐主执行面。
-
 ## 当前结构
 
 ```text
@@ -28,9 +26,8 @@ SUnrealMcp/
 │     │  ├─ package.json
 │     │  ├─ bin/
 │     │  └─ dist/
-├─ UnrealPlugin/
-│  └─ SUnrealMcp/
-└─ McpServer/                  # legacy reference during migration
+└─ UnrealPlugin/
+   └─ SUnrealMcp/
 ```
 
 ## CLI-First Workflow
@@ -103,7 +100,7 @@ CLI 自带帮助系统，方便 Agent 运行时校验，也方便手动调试：
 ```bash
 sunrealmcp-cli help
 sunrealmcp-cli help node
-sunrealmcp-cli help node inspect-graph
+sunrealmcp-cli help node inspect_blueprint_graph
 sunrealmcp-cli help --json
 ```
 
@@ -142,31 +139,12 @@ YourProject/
 - `bAutoStartServer = true`
 - `CompletedTaskRetentionSeconds = 300`
 
-## 迁移状态
-
-当前仓库已经完成这些重构方向：
-
-- Skill 设计切到 CLI-first
-- CLI 被内置到 skill 目录，并改成 TypeScript 工程
-- CLI 入口改成扫描命令模块，family 元数据和 command 元数据一起动态注册
-- 文档改成渐进式披露
-- CLI 加入了分层 help 设计和首版实现
-- 已先迁入用于验证架构的 `core` 命令面：`discovery`、`system`、`raw`
-
-当前仍处于迁移中的部分：
-
-- `McpServer/` 尚未移除
-- `editor / blueprint / node / umg / project` 等类别的命令还会继续迁入同一套 TypeScript 命令模块架构
-- 内置 CLI 还会继续替代剩余的老 MCP server 职责
-
 ## English
 
-SUnrealMcp is currently moving toward a `skill-embedded CLI + Unreal plugin` architecture.
+SUnrealMcp uses a `skill-embedded CLI + Unreal plugin` architecture.
 
 Recommended runtime path:
 
 - `UnrealPlugin/SUnrealMcp` handles Unreal-side command execution over TCP JSON
 - `Skill/sunrealmcp-unreal-editor-workflow` teaches the agent how to use the embedded CLI
 - the embedded CLI resolves the target project and port, then talks directly to the plugin
-
-The root `McpServer/` folder is still kept as a migration reference, but it is no longer the recommended primary execution surface.
