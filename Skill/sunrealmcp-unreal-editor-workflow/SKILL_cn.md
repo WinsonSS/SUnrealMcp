@@ -4,25 +4,8 @@
 
 这份 Skill 用于所有需要和 Unreal Editor、UE 资产、编辑器对象真实交互的任务。
 
-当前版本是 `CLI-first`：
-
-- 不再把 MCP tool discovery 当作主执行面
-- 默认通过 Skill 内置 CLI 去驱动安装了 `SUnrealMcp` 插件的 Unreal Editor
-
-当前实现状态：
-
-- 内置 CLI 已经是 Skill 目录里的真实 TypeScript 工程
-- 目前先迁入了用于验证架构的 `core` 命令面
-- 其他类别命令后续继续按同一套命令模块结构逐步迁入
-
 Skill 负责流程和决策。
-CLI 负责连接、发命令、查端口、返回结果。
-
-CLI 架构本身也应是模块驱动的：
-
-- 类别元数据和命令元数据一起从命令模块里注册
-- CLI 入口只负责扫描和加载模块
-- 不要把 `system`、`editor`、`node` 这类类别名硬编码在骨架里
+CLI 负责连接、发命令、查端口、返回结果，并且充当能力真相源。
 
 ## 内置 CLI
 
@@ -63,19 +46,7 @@ CLI 架构本身也应是模块驱动的：
 
 默认先走内置 CLI。
 
-### 2. `SUnrealMcp` 没有 MCP resources
-
-不要对 `SUnrealMcp` 调用：
-
-- `list_mcp_resources`
-- `list_mcp_resource_templates`
-
-这套流程的前提是：
-
-- Unreal 侧能力在插件 command 系统里
-- Agent 侧执行面在 CLI 里
-
-### 3. 资产语义请求必须用资产语义读取来回答
+### 2. 资产语义请求必须用资产语义读取来回答
 
 如果用户问的是 Blueprint 逻辑、图结构、Widget 绑定、编辑器元数据：
 
@@ -85,74 +56,43 @@ CLI 架构本身也应是模块驱动的：
 
 如果当前 CLI 和插件读不到这些语义，就把它归类成“缺能力”，然后去补。
 
+### 3. CLI help 就是命令目录
+
+不要把静态 markdown 命令清单当作能力真相源。
+
+当 Agent 需要命令信息时，按下面这个固定顺序调用 CLI help：
+
+1. 如果还不知道该看哪个类别，先执行 `sunrealmcp-cli help --json`
+2. 读取返回里的 family 列表，选出最匹配任务的 family
+3. 执行 `sunrealmcp-cli help <family> --json`
+4. 读取该 family 下的命令列表，选出最匹配任务的 command
+5. 在真正执行前，执行 `sunrealmcp-cli help <family> <command> --json`
+6. 读取返回里的参数定义，再据此拼出真实调用命令
+
+如果 CLI help 里没有出现所需 family 或 command，就直接把它视为缺能力。
+
 ### 4. 缺能力是主流程的一部分
 
-如果当前 CLI 命令面做不完任务：
+能力是否存在，只以 CLI 当前暴露的命令面为准。
 
-- 判断缺的是哪个 Unreal command 或 CLI wrapper
-- 补最小能力
+如果 CLI 里没有完成任务所需的命令：
+
+- 就直接把它视为缺能力
+- 补最小 Unreal command 和最小 CLI wrapper
 - 重编或 Live Coding
 - 然后继续原任务
+
+如果补的过程中发现 Unreal 侧以前其实有旧 command：
+
+- 可以复用、替换、包装、收敛
+- 但对 Agent 来说，仍然以新的 CLI 命令面为准
 
 不要停在“能力已经补好了”。
 必须回到原任务继续做完。
 
-## 渐进式披露
-
-主 Skill 保持精简。
-
-默认读取顺序：
-
-1. 先读本文件，获取工作流规则
-2. 再读 [references/cli-command-catalog.md](./references/cli-command-catalog.md)，决定该看哪个类别文档
-3. 默认只读一个类别文档，除非任务确实跨多个类别
-
-不要默认把所有类别文档都读进上下文。
-
-## 命令路由
-
-把 [references/cli-command-catalog.md](./references/cli-command-catalog.md) 当作命令路由索引。
-
-它负责告诉 Agent：
-
-- 有哪些命令类别
-- 每个类别是干什么的
-- 下一步应该读哪个类别文档
-
-每个类别文档内部再按下面这套生命周期分层：
-
-- `core`
-- `stable`
-- `candidate`
-- `temporary`
-
-当前已经真正落地到 CLI 的命令面以 `core` 为主：
-
-- `discovery`
-- `system`
-- `raw`
-
-其他类别目前保留为目标扩展结构，后续继续按同样的 TypeScript 命令模块架构补进去。
-而且这些类别在真实 CLI 里也应该和命令一起通过模块注册进来，而不是写死在入口代码里。
-
 ## 目标工程与端口发现
 
-CLI 需要支持多个 Unreal Editor。
-
-默认规则：
-
-1. 优先传 `--project <path>`
-2. 让 CLI 去检查该工程是否安装了 `SUnrealMcp`
-3. 让 CLI 去读取 ini 里的 `BindAddress` 和 `Port`
-4. 只有必要时才手动指定 `--host` 和 `--port`
-
-设置节固定为：
-
-```ini
-[/Script/SUnrealMcp.SUnrealMcpSettings]
-```
-
-如果自动发现出了多个候选目标，而任务本身又没有明确指出具体工程，就和用户对齐。
+CLI 支持多个 Unreal Editor。但是需要通过`--project <project_path>`指定UE工程目录。
 
 ## 执行闭环
 
@@ -162,52 +102,40 @@ CLI 需要支持多个 Unreal Editor。
 
 后面的能力补全，只是为了把这件事做完。
 
-### 2. 解析目标工程和编辑器
+### 2. 定位目标工程
 
-优先按工程定位，而不是只按端口定位。
+定位UE工程，获取到UE工程根目录路径。
 
-让 CLI 去确认：
+### 3. 探测当前 CLI 命令面
 
-- 工程里有没有 `SUnrealMcp` 插件
-- 哪些配置文件在生效
-- 当前编辑器应该监听哪个 host 和 port
+通过 CLI help 去看当前真实可用的类别和命令。
 
-### 3. 选择命令类别
+具体调用顺序严格按“核心规则 3. CLI help 就是命令目录”执行。
 
-先看命令路由索引，再加载对应类别文档。
+不要凭记忆猜命令名。
 
-当前类别有：
-
-- `discovery`
-- `system`
-- `editor`
-- `blueprint`
-- `node`
-- `umg`
-- `project`
-- `raw`
+需要根据 help 返回的参数定义构造最终调用。
 
 ### 4. 先用成熟能力
 
-在某个类别里默认这样选：
+在 CLI 当前暴露出来的类别和命令里，默认这样选：
 
 1. 基础设施类先看 `core`
 2. 正式能力优先看 `stable`
-3. 不够再看 `candidate`
-4. `temporary` 只作为过桥能力
+3. `temporary` 只作为临时能力
 
 ### 5. 缺能力就补
 
-如果现有 CLI 命令不够：
+如果 CLI 里没有能完成任务的命令：
 
-- 查 Unreal 插件 command 实现
 - 查 CLI 命令面
 - 补最小 Unreal command 和最小 CLI wrapper
+- 新添加的cli命令和UnrealCommand作为temporary添加。
 
 这个仓库里的默认 source of truth：
 
 - Unreal 插件：
-  `UnrealPlugin/SUnrealMcp/Source/SUnrealMcp/Private/Commands`
+  `ProjectRootPath/Plugins/SUnrealMcp/Source/SUnrealMcp/Private/Commands`
 - Skill 内置 CLI：
   `Skill/sunrealmcp-unreal-editor-workflow/cli`
 
@@ -220,7 +148,7 @@ CLI 需要支持多个 Unreal Editor。
 - 必要时 reload command registry
 - 然后立刻继续原任务
 
-如果新的 Unreal command 已经有了，但更漂亮的 CLI wrapper 还没补完，就先用 CLI 的 `raw send` 作为当前会话的临时桥接。
+这时候新添加的命令就可以直接用于继续原任务了
 
 ### 7. 以原任务完成为结束
 
@@ -228,24 +156,8 @@ CLI 需要支持多个 Unreal Editor。
 
 ## CLI Help
 
-CLI 本身也必须可自解释，方便 Agent 运行时校验和你手动调试。
+当目标是让 Agent 执行命令时，优先使用 `--json` 的 help 输出。
 
-常见用法：
+具体用法严格按“核心规则 3. CLI help 就是命令目录”执行。
 
-- `sunrealmcp-cli help`
-- `sunrealmcp-cli help <family>`
-- `sunrealmcp-cli help <family> <command>`
-- `sunrealmcp-cli help --json`
-
-文档是主指导面。
-CLI help 是运行时校验和调试面。
-
-## 完成标准
-
-只有下面这些都满足时，这个工作流才算完成：
-
-- 原始用户任务已经完成，或只剩真实外部阻塞
-- Agent 确实走了内置 CLI，而不是漂移到无关路径
-- 正确的 Unreal 工程和端口已经被解析出来，或者被显式覆盖
-- 本轮所需的缺失能力已经在正确层级补上
-- 资产语义类请求，答案来自真实的 Unreal 语义读取，而不是外围推断
+非 JSON help 只用于人类手动调试。

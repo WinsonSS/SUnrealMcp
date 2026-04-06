@@ -28,7 +28,6 @@ SUnrealMcp/
 │     │  ├─ package.json
 │     │  ├─ bin/
 │     │  └─ dist/
-│     └─ references/
 ├─ UnrealPlugin/
 │  └─ SUnrealMcp/
 └─ McpServer/                  # legacy reference during migration
@@ -115,17 +114,12 @@ sunrealmcp-cli help --json
 - [SKILL.md](Skill/sunrealmcp-unreal-editor-workflow/SKILL.md)
 - [SKILL_cn.md](Skill/sunrealmcp-unreal-editor-workflow/SKILL_cn.md)
 
-命令参考文档按类别拆分在：
+命令详情不再维护静态参考文档，统一以 CLI help 为准：
 
-- [cli-command-catalog.md](Skill/sunrealmcp-unreal-editor-workflow/references/cli-command-catalog.md)
-- [cli-discovery.md](Skill/sunrealmcp-unreal-editor-workflow/references/cli-discovery.md)
-- [cli-system.md](Skill/sunrealmcp-unreal-editor-workflow/references/cli-system.md)
-- [cli-editor.md](Skill/sunrealmcp-unreal-editor-workflow/references/cli-editor.md)
-- [cli-blueprint.md](Skill/sunrealmcp-unreal-editor-workflow/references/cli-blueprint.md)
-- [cli-node.md](Skill/sunrealmcp-unreal-editor-workflow/references/cli-node.md)
-- [cli-umg.md](Skill/sunrealmcp-unreal-editor-workflow/references/cli-umg.md)
-- [cli-project.md](Skill/sunrealmcp-unreal-editor-workflow/references/cli-project.md)
-- [cli-raw.md](Skill/sunrealmcp-unreal-editor-workflow/references/cli-raw.md)
+- `sunrealmcp-cli help`
+- `sunrealmcp-cli help <family>`
+- `sunrealmcp-cli help <family> <command>`
+- `sunrealmcp-cli help --json`
 
 ## Unreal Plugin
 

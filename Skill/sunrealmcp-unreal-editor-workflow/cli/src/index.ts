@@ -6,7 +6,7 @@ import { CliCommandDefinition, CliCommandModule, CliGlobalOptions, CliParameterD
 import { resolveTarget, DEFAULT_TIMEOUT_MS } from "./runtime/discovery.js";
 import { UnrealTransportClient } from "./transport/unreal_client.js";
 
-const LIFECYCLE_ORDER = ["core", "stable", "candidate", "temporary"] as const;
+const LIFECYCLE_ORDER = ["core", "stable", "temporary"] as const;
 
 const GLOBAL_OPTIONS = [
     { name: "project", type: "path", description: "Project root or .uproject path." },
