@@ -27,7 +27,7 @@ export function register(registry: CliCommandRegistry): void {
     registerCommand(registry, {
         family: FAMILY_NAME,
         lifecycle: "core",
-        cliCommand: "reload-command-registry",
+        cliCommand: "reload_command_registry",
         unrealCommand: "reload_command_registry",
         description: "Reload the Unreal command registry after Live Coding or rebuild.",
         parameters: [],
@@ -36,22 +36,22 @@ export function register(registry: CliCommandRegistry): void {
     registerCommand(registry, {
         family: FAMILY_NAME,
         lifecycle: "core",
-        cliCommand: "get-task-status",
+        cliCommand: "get_task_status",
         unrealCommand: "get_task_status",
         description: "Query a long-running Unreal task.",
         parameters: [
-            { name: "task-id", type: "string", description: "Task id.", required: true },
+            { name: "task_id", type: "string", description: "Task id.", required: true },
         ],
     });
 
     registerCommand(registry, {
         family: FAMILY_NAME,
         lifecycle: "core",
-        cliCommand: "cancel-task",
+        cliCommand: "cancel_task",
         unrealCommand: "cancel_task",
         description: "Cancel a long-running Unreal task.",
         parameters: [
-            { name: "task-id", type: "string", description: "Task id.", required: true },
+            { name: "task_id", type: "string", description: "Task id.", required: true },
         ],
     });
 }

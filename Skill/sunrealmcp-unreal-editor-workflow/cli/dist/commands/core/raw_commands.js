@@ -15,13 +15,13 @@ export function register(registry) {
         description: "Send any Unreal command directly when a friendly CLI wrapper does not exist yet.",
         parameters: [
             { name: "command", type: "string", description: "Unreal command name.", required: true },
-            { name: "params-json", type: "json", description: "Raw params JSON.", defaultValue: {} },
+            { name: "params_json", type: "json", description: "Raw params JSON.", defaultValue: {} },
         ],
         examples: [
-            "sunrealmcp-cli raw send --project D:\\Projects\\MyGame --command inspect_blueprint_graph --params-json '{\"blueprint_path\":\"/Game/BP_Test.BP_Test\"}'",
+            "sunrealmcp-cli raw send --project D:\\Projects\\MyGame --command inspect_blueprint_graph --params_json '{\"blueprint_path\":\"/Game/BP_Test.BP_Test\"}'",
         ],
         mapParams(values) {
-            return values["params-json"] ?? {};
+            return values.params_json ?? {};
         },
     });
 }

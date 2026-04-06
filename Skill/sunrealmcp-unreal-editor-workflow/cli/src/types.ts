@@ -67,6 +67,7 @@ export interface CliCommandDefinition {
     examples?: string[];
     unrealCommand?: string;
     mapParams?: (values: CliParameterValues) => Record<string, unknown>;
+    execute?: (context: CliCommandExecutionContext) => Promise<unknown>;
 }
 
 export interface CliCommandModule {

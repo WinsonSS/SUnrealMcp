@@ -12,7 +12,7 @@ const GLOBAL_OPTIONS = [
     { name: "project", type: "path", description: "Project root or .uproject path." },
     { name: "host", type: "string", description: "Override resolved bind address." },
     { name: "port", type: "number", description: "Override resolved port." },
-    { name: "timeout-ms", type: "number", description: "Socket timeout override.", defaultValue: DEFAULT_TIMEOUT_MS },
+    { name: "timeout_ms", type: "number", description: "Socket timeout override.", defaultValue: DEFAULT_TIMEOUT_MS },
     { name: "pretty", type: "flag", description: "Pretty-print JSON command output." },
 ];
 const HELP_OPTIONS = [{ name: "json", type: "flag", description: "Emit JSON help output." }];
@@ -112,6 +112,15 @@ async function executeCommand(definition: CliCommandDefinition, parsed: ParsedCl
     const resolveTargetForContext = (): Promise<import("./types.js").CliTarget> =>
         resolveTarget(parsed.global);
 
+    if (definition.execute) {
+        return definition.execute({
+            target: undefined,
+            resolveTarget: resolveTargetForContext,
+            values: parsed.values,
+            global: parsed.global,
+        });
+    }
+
     const target = await resolveTargetForContext();
     const client = new UnrealTransportClient({
         host: target.host,
@@ -185,8 +194,8 @@ function parseOptions(tokens: string[], parameters: CliParameterDefinition[]): P
             global.port = parseNumber(next, "--port");
             continue;
         }
-        if (optionName === "timeout-ms") {
-            global.timeoutMs = parseNumber(next, "--timeout-ms");
+        if (optionName === "timeout_ms") {
+            global.timeoutMs = parseNumber(next, "--timeout_ms");
             continue;
         }
 
@@ -282,7 +291,7 @@ function printRootHelp(registry: CommandRegistry, jsonMode: boolean): void {
     const families = registry.getFamilies().map((family) => ({
         family: family.name,
         description: family.description,
-        commandCount: registry.getAll().length,
+        commandCount: registry.getAll().filter((command) => command.family === family.name).length,
     }));
 
     if (jsonMode) {
