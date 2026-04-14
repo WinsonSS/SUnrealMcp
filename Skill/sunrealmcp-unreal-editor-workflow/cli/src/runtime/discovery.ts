@@ -144,7 +144,6 @@ function resolveConfig(
             config.port = Number(section.Port);
         }
         config.sources.push(filePath);
-        break;
     }
 
     if (overrides.host !== undefined) {
@@ -161,8 +160,8 @@ function resolveConfig(
 
 function collectConfigCandidates(projectRoot: string): string[] {
     const files: string[] = [];
-    files.push(path.join(projectRoot, "Config", "DefaultSUnrealMcp.ini"));
     files.push(path.join(projectRoot, "Plugins", "SUnrealMcp", "Config", "DefaultSUnrealMcp.ini"));
+    files.push(path.join(projectRoot, "Config", "DefaultSUnrealMcp.ini"));
     return files;
 }
 

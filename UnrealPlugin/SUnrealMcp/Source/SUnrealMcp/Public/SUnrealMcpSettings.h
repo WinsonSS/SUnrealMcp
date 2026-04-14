@@ -5,7 +5,7 @@
 
 #include "SUnrealMcpSettings.generated.h"
 
-UCLASS(Config=EditorPerProjectUserSettings, DefaultConfig, meta=(DisplayName="SUnrealMcp"))
+UCLASS(Config=SUnrealMcp, DefaultConfig, meta=(DisplayName="SUnrealMcp"))
 class SUNREALMCP_API USUnrealMcpSettings : public UDeveloperSettings
 {
     GENERATED_BODY()
