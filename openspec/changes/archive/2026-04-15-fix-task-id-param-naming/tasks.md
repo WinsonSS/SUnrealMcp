@@ -21,5 +21,5 @@
 
 ## 4. 发布 capability spec
 
-- [ ] 4.1 通过 `/opsx:archive` 归档本 change，使 `openspec/changes/fix-task-id-param-naming/specs/core-command-wire-protocol/spec.md` 被提升到 `openspec/specs/core-command-wire-protocol/spec.md`。
-- [ ] 4.2 确认 `openspec/specs/core-command-wire-protocol/spec.md` 存在且包含本次定义的四条 requirements：wire-参数 snake_case 约定、`get_task_status` 契约、`cancel_task` 契约、CLI 透传契约。
+- [x] 4.1 通过 `/opsx:archive` 归档本 change，使 `openspec/changes/fix-task-id-param-naming/specs/core-command-wire-protocol/spec.md` 被提升到 `openspec/specs/core-command-wire-protocol/spec.md`。
+- [x] 4.2 确认 `openspec/specs/core-command-wire-protocol/spec.md` 存在且包含本次定义的四条 requirements：wire-参数 snake_case 约定、`get_task_status` 契约、`cancel_task` 契约、CLI 透传契约。
