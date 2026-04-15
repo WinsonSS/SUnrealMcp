@@ -149,12 +149,25 @@ Default source-of-truth locations in this repository:
 
 After adding capability:
 
+#### Unreal side (C++ command)
+
 - prefer Live Coding when possible
 - otherwise do a full rebuild
 - reload the command registry when needed
-- then continue the original task immediately
 
-The newly added command should then be used immediately to continue the original task.
+#### CLI side (TypeScript wrapper)
+
+If you added or modified TypeScript files under `cli/src/`, you must compile before the changes take effect:
+
+```bash
+cd Skill/sunrealmcp-unreal-editor-workflow/cli && npm run build
+```
+
+This compiles `src/` into `dist/`. The CLI reads from `dist/` at runtime.
+
+#### Then continue
+
+Once both sides are ready, continue the original task immediately. The newly added commands are now available.
 
 ### 7. Finish when the original task is finished
 

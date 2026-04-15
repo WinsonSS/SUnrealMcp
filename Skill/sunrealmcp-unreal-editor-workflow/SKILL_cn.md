@@ -143,12 +143,25 @@ CLI 支持多个 Unreal Editor。但是需要通过`--project <project_path>`指
 
 补完能力后：
 
+#### Unreal 侧（C++ command）
+
 - 能 Live Coding 就优先 Live Coding
 - 不行就完整重编
 - 必要时 reload command registry
-- 然后立刻继续原任务
 
-这时候新添加的命令就可以直接用于继续原任务了
+#### CLI 侧（TypeScript wrapper）
+
+如果新增或修改了 `cli/src/` 下的 TypeScript 文件，必须编译后才能生效：
+
+```bash
+cd Skill/sunrealmcp-unreal-editor-workflow/cli && npm run build
+```
+
+��会把 `src/` 编译到 `dist/`，CLI 运行时读的是 `dist/`。
+
+#### 然后继续
+
+两侧都就绪后立刻继续原任务。新添加的命令可以直接使用。
 
 ### 7. 以原任务完成为结束
 
