@@ -23,12 +23,12 @@ namespace
             }
 
             FString TaskId;
-            if (!Request.Params->TryGetStringField(TEXT("taskId"), TaskId) || TaskId.IsEmpty())
+            if (!Request.Params->TryGetStringField(TEXT("task_id"), TaskId) || TaskId.IsEmpty())
             {
                 return FSUnrealMcpResponse::MakeError(
                     Request.RequestId,
                     TEXT("INVALID_PARAMS"),
-                    TEXT("Missing taskId."));
+                    TEXT("Missing task_id."));
             }
 
             return Context.TaskRegistry->CancelTask(Request.RequestId, TaskId);

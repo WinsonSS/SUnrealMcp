@@ -84,7 +84,7 @@ FSUnrealMcpResponse FSUnrealMcpTaskRegistry::CancelTask(const FString& RequestId
     }
 
     TSharedPtr<FJsonObject> Data = BuildTaskData(*RegisteredTask);
-    Data->SetBoolField(TEXT("cancelRequested"), true);
+    Data->SetBoolField(TEXT("cancel_requested"), true);
     return FSUnrealMcpResponse::MakeSuccess(RequestId, Data);
 }
 
@@ -126,8 +126,8 @@ TSharedPtr<FJsonObject> FSUnrealMcpTaskRegistry::BuildTaskData(const FRegistered
     const TSharedRef<FJsonObject> Data = MakeShared<FJsonObject>();
     const ESUnrealMcpTaskState State = RegisteredTask.Task->GetState();
 
-    Data->SetStringField(TEXT("taskId"), RegisteredTask.TaskId);
-    Data->SetStringField(TEXT("taskName"), RegisteredTask.Task->GetTaskName());
+    Data->SetStringField(TEXT("task_id"), RegisteredTask.TaskId);
+    Data->SetStringField(TEXT("task_name"), RegisteredTask.Task->GetTaskName());
     Data->SetStringField(TEXT("status"), LexToString(State));
     Data->SetBoolField(
         TEXT("completed"),

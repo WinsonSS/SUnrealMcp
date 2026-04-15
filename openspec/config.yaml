@@ -1,0 +1,26 @@
+schema: spec-driven
+
+context: |
+  本项目包含两个骨架：
+    - `Skill/sunrealmcp-unreal-editor-workflow/cli`：嵌入 Claude Skill 的 TypeScript CLI，给 Agent 使用。
+    - `UnrealPlugin/SUnrealMcp`：Unreal 编辑器端的插件（C++），通过 TCP + newline-delimited JSON 与 CLI 通信。
+  协议版本 `ProtocolVersion = 1`，默认监听 `127.0.0.1:55557`。CLI 是 one-shot 进程，每次命令新建一条 TCP 连接。
+  本工具的主要消费者是 Agent，因此响应体积、help 输出、错误信息都会被当作 token 成本来衡量。
+
+rules:
+  proposal:
+    - 所有正文用中文撰写。
+    - 代码符号、文件路径、命令名、字段名、枚举值保持英文原样，必要时用反引号包起来。
+    - 保留章节标题 (`## Why` / `## What Changes` / `## Capabilities` / `## Impact`) 为英文 —— OpenSpec parser 依赖它们。
+    - 破坏性变更使用 **BREAKING** 标记。
+  design:
+    - 所有正文用中文撰写，代码符号/路径/字段名保持英文。
+    - 保留章节标题 (`## Context` / `## Goals / Non-Goals` / `## Decisions` / `## Risks / Trade-offs` / `## Migration Plan` / `## Open Questions`) 为英文。
+    - Decisions 小节要写出 "为什么不选另一条路"，让未来的维护者能判断边界情况。
+  specs:
+    - Requirement 与 Scenario 的正文用中文撰写。
+    - 保留结构性关键字为英文：`## ADDED Requirements` / `## MODIFIED Requirements` / `## REMOVED Requirements` / `### Requirement:` / `#### Scenario:` / `**WHEN**` / `**THEN**` / `**AND**` / `SHALL` / `MUST` —— 这些是 parser 和归档流程依赖的字面量。
+    - 代码字段名、命令名、错误码、路径保持英文原样。
+  tasks:
+    - 任务描述用中文撰写，代码符号/路径/命令名保持英文原样。
+    - 每条任务仍然使用 `- [ ] X.Y` 复选框格式，apply 阶段会解析。
