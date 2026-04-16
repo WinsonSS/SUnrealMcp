@@ -167,6 +167,21 @@ cd Skill/sunrealmcp-unreal-editor-workflow/cli && npm run build
 
 只有原任务完成了，这个工作流才算完成。
 
+## CLI 响应格式
+
+**BREAKING（自 slim-cli-response-envelope 起）：** 命令默认输出精简 JSON 信封：
+
+- 成功：`{"ok": true, "data": {…}}`
+- 失败：`{"ok": false, "error": {"code": "…", "message": "…"}}`
+
+诊断字段（`target`、`cli`、`unreal`、`raw`）默认不输出，以降低 token 开销。如需包含，传 `--verbose`：
+
+```bash
+sunrealmcp-cli <family> <command> --verbose
+```
+
+Agent 工作流应使用默认（精简）格式。`--verbose` 仅用于人工调试。
+
 ## CLI Help
 
 当目标是让 Agent 执行命令时，优先使用 `--json` 的 help 输出。

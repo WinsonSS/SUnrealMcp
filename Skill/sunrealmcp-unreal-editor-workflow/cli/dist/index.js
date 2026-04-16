@@ -11,6 +11,7 @@ const GLOBAL_OPTIONS = [
     { name: "port", type: "number", description: "Override resolved port." },
     { name: "timeout_ms", type: "number", description: "Socket timeout override.", defaultValue: DEFAULT_TIMEOUT_MS },
     { name: "pretty", type: "flag", description: "Pretty-print JSON command output." },
+    { name: "verbose", type: "flag", description: "Include diagnostic fields (target, cli, unreal, raw) in command output." },
 ];
 const HELP_OPTIONS = [{ name: "json", type: "flag", description: "Emit JSON help output." }];
 export async function main(argv) {
@@ -107,29 +108,32 @@ async function executeCommand(definition, parsed) {
     const unrealCommand = definition.family === "raw" ? String(parsed.values.command) : String(definition.unrealCommand);
     const params = definition.mapParams ? definition.mapParams(parsed.values) : parsed.values;
     const response = await client.sendCommand(unrealCommand, params);
-    return {
+    const result = {
         ok: response.ok,
-        target,
-        cli: {
+        ...(response.ok ? { data: response.data } : { error: response.error }),
+    };
+    if (parsed.global.verbose) {
+        result.target = target;
+        result.cli = {
             family: definition.family,
             command: definition.cliCommand,
             lifecycle: definition.lifecycle,
-        },
-        unreal: {
+        };
+        result.unreal = {
             command: unrealCommand,
             requestId: response.requestId,
             params,
-        },
-        data: response.ok ? response.data : undefined,
-        error: response.ok ? undefined : response.error,
-        raw: response.raw,
-    };
+        };
+        result.raw = response.raw;
+    }
+    return result;
 }
 function parseOptions(tokens, parameters) {
     const values = {};
     const global = {
         timeoutMs: DEFAULT_TIMEOUT_MS,
         pretty: false,
+        verbose: false,
     };
     const parameterLookup = new Map(parameters.map((parameter) => [parameter.name, parameter]));
     for (let index = 0; index < tokens.length; index += 1) {
@@ -140,6 +144,10 @@ function parseOptions(tokens, parameters) {
         const optionName = token.slice(2);
         if (optionName === "pretty") {
             global.pretty = true;
+            continue;
+        }
+        if (optionName === "verbose") {
+            global.verbose = true;
             continue;
         }
         if (optionName === "json") {

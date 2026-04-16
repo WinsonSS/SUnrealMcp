@@ -173,6 +173,21 @@ Once both sides are ready, continue the original task immediately. The newly add
 
 This workflow is complete only when the original user task is complete.
 
+## CLI Response Format
+
+**BREAKING (since slim-cli-response-envelope):** The default command output is a minimal JSON envelope:
+
+- Success: `{“ok”: true, “data”: {…}}`
+- Failure: `{“ok”: false, “error”: {“code”: “…”, “message”: “…”}}`
+
+Diagnostic fields (`target`, `cli`, `unreal`, `raw`) are omitted by default to reduce token cost. To include them, pass `--verbose`:
+
+```bash
+sunrealmcp-cli <family> <command> --verbose
+```
+
+Agent workflows should use the default (slim) format. Use `--verbose` only for human debugging.
+
 ## CLI Help
 
 When the goal is agent execution, prefer `--json` help output.

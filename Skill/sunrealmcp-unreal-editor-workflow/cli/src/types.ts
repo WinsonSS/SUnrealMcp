@@ -26,6 +26,7 @@ export interface CliGlobalOptions {
     port?: number;
     timeoutMs: number;
     pretty: boolean;
+    verbose: boolean;
 }
 
 export interface ParsedCliOptions {
