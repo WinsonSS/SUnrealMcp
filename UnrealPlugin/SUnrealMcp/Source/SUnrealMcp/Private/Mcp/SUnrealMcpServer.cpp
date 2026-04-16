@@ -264,7 +264,35 @@ void FSUnrealMcpServer::ProcessIncomingText(FClientConnection& Connection, const
                 *ErrorMessageText);
         }
 
-        const FString ResponseLine = Response.ToJsonLine();
+        FString ResponseLine = Response.ToJsonLine();
+        {
+            FTCHARToUTF8 Utf8Check(*ResponseLine);
+            const int32 ResponseBytes = Utf8Check.Length();
+            if (ResponseBytes > Config.MaxPendingSendBytesPerConnection)
+            {
+                UE_LOG(
+                    LogSUnrealMcp,
+                    Warning,
+                    TEXT("Response too large for requestId=%s command=%s bytes=%d limit=%d"),
+                    *Response.RequestId,
+                    *Request.Command,
+                    ResponseBytes,
+                    Config.MaxPendingSendBytesPerConnection);
+
+                TSharedPtr<FJsonObject> Details = MakeShared<FJsonObject>();
+                Details->SetNumberField(TEXT("response_bytes"), ResponseBytes);
+                Details->SetNumberField(TEXT("limit_bytes"), Config.MaxPendingSendBytesPerConnection);
+
+                const FSUnrealMcpResponse ErrorResponse = FSUnrealMcpResponse::MakeError(
+                    Response.RequestId,
+                    TEXT("RESPONSE_TOO_LARGE"),
+                    FString::Printf(TEXT("Response from command '%s' exceeds send buffer limit (%d bytes > %d bytes)."),
+                        *Request.Command, ResponseBytes, Config.MaxPendingSendBytesPerConnection),
+                    Details);
+                ResponseLine = ErrorResponse.ToJsonLine();
+            }
+        }
+
         if (!SendResponseLine(Connection, ResponseLine, Response.RequestId))
         {
             UE_LOG(
