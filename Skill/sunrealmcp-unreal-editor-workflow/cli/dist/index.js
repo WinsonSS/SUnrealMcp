@@ -262,7 +262,7 @@ function printRootHelp(registry, jsonMode) {
         commandCount: registry.getAll().filter((command) => command.family === family.name).length,
     }));
     if (jsonMode) {
-        writeJson({ kind: "root-help", globalOptions: GLOBAL_OPTIONS, helpOptions: HELP_OPTIONS, families }, true);
+        writeJson({ kind: "root-help", families }, true);
         return;
     }
     const lines = [];
@@ -300,21 +300,21 @@ function printFamilyHelp(registry, family, jsonMode) {
     }
     const sections = {};
     for (const lifecycle of LIFECYCLE_ORDER) {
-        sections[lifecycle] = commands
+        const entries = commands
             .filter((command) => command.lifecycle === lifecycle)
             .map((command) => ({
             cliCommand: command.cliCommand,
             description: command.description,
-            lifecycle: command.lifecycle,
         }));
+        if (entries.length > 0) {
+            sections[lifecycle] = entries;
+        }
     }
     if (jsonMode) {
         writeJson({
             kind: "family-help",
             family,
             description: familyDefinition.description,
-            globalOptions: GLOBAL_OPTIONS,
-            helpOptions: HELP_OPTIONS,
             sections,
         }, true);
         return;
@@ -324,7 +324,7 @@ function printFamilyHelp(registry, family, jsonMode) {
     lines.push(familyDefinition.description);
     lines.push("");
     for (const lifecycle of LIFECYCLE_ORDER) {
-        if (sections[lifecycle].length === 0) {
+        if (!sections[lifecycle]) {
             continue;
         }
         lines.push(`${capitalize(lifecycle)}:`);
@@ -348,8 +348,6 @@ function printCommandHelp(registry, family, cliCommand, jsonMode) {
         lifecycle: definition.lifecycle,
         description: definition.description,
         unrealCommand: definition.unrealCommand ?? null,
-        globalOptions: GLOBAL_OPTIONS,
-        helpOptions: HELP_OPTIONS,
         parameters: definition.parameters,
         examples: definition.examples ?? [`sunrealmcp-cli ${family} ${cliCommand} ...`],
     };

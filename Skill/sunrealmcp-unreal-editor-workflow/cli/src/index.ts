@@ -305,7 +305,7 @@ function printRootHelp(registry: CommandRegistry, jsonMode: boolean): void {
     }));
 
     if (jsonMode) {
-        writeJson({ kind: "root-help", globalOptions: GLOBAL_OPTIONS, helpOptions: HELP_OPTIONS, families }, true);
+        writeJson({ kind: "root-help", families }, true);
         return;
     }
 
@@ -343,15 +343,17 @@ function printFamilyHelp(registry: CommandRegistry, family: string, jsonMode: bo
     if (!familyDefinition) {
         throw new Error(`Unknown family "${family}".`);
     }
-    const sections: Record<string, { cliCommand: string; description: string; lifecycle: string }[]> = {};
+    const sections: Record<string, { cliCommand: string; description: string }[]> = {};
     for (const lifecycle of LIFECYCLE_ORDER) {
-        sections[lifecycle] = commands
+        const entries = commands
             .filter((command) => command.lifecycle === lifecycle)
             .map((command) => ({
                 cliCommand: command.cliCommand,
                 description: command.description,
-                lifecycle: command.lifecycle,
             }));
+        if (entries.length > 0) {
+            sections[lifecycle] = entries;
+        }
     }
 
     if (jsonMode) {
@@ -359,8 +361,6 @@ function printFamilyHelp(registry: CommandRegistry, family: string, jsonMode: bo
             kind: "family-help",
             family,
             description: familyDefinition.description,
-            globalOptions: GLOBAL_OPTIONS,
-            helpOptions: HELP_OPTIONS,
             sections,
         }, true);
         return;
@@ -371,7 +371,7 @@ function printFamilyHelp(registry: CommandRegistry, family: string, jsonMode: bo
     lines.push(familyDefinition.description);
     lines.push("");
     for (const lifecycle of LIFECYCLE_ORDER) {
-        if (sections[lifecycle].length === 0) {
+        if (!sections[lifecycle]) {
             continue;
         }
         lines.push(`${capitalize(lifecycle)}:`);
@@ -397,8 +397,6 @@ function printCommandHelp(registry: CommandRegistry, family: string, cliCommand:
         lifecycle: definition.lifecycle,
         description: definition.description,
         unrealCommand: definition.unrealCommand ?? null,
-        globalOptions: GLOBAL_OPTIONS,
-        helpOptions: HELP_OPTIONS,
         parameters: definition.parameters,
         examples: definition.examples ?? [`sunrealmcp-cli ${family} ${cliCommand} ...`],
     };

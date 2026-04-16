@@ -175,7 +175,7 @@ This workflow is complete only when the original user task is complete.
 
 ## CLI Response Format
 
-**BREAKING (since slim-cli-response-envelope):** The default command output is a minimal JSON envelope:
+The default command output is a minimal JSON envelope:
 
 - Success: `{“ok”: true, “data”: {…}}`
 - Failure: `{“ok”: false, “error”: {“code”: “…”, “message”: “…”}}`
@@ -195,3 +195,16 @@ When the goal is agent execution, prefer `--json` help output.
 Follow the exact usage rules from “Core Rule 3. CLI help is the command catalog”.
 
 Use non-JSON help only for human-readable manual debugging.
+
+### Global options reference
+
+JSON help output only contains command-specific information. Global options are listed here for reference:
+
+- `--project <path>` — Project root or .uproject path
+- `--host <string>` — Override resolved bind address
+- `--port <number>` — Override resolved port
+- `--timeout_ms <number>` — Socket timeout override (default: 30000)
+- `--pretty` — Pretty-print JSON command output
+- `--verbose` — Include diagnostic fields in command output
+
+Help-only option: `--json` — Emit JSON help output.
