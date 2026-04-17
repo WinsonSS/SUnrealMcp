@@ -53,9 +53,7 @@ FSUnrealMcpResponse FSUnrealMcpTaskRegistry::MakeAcceptedResponse(const FString&
         return MakeMissingTaskResponse(RequestId, TaskId);
     }
 
-    TSharedPtr<FJsonObject> Data = BuildTaskData(*RegisteredTask);
-    Data->SetBoolField(TEXT("accepted"), true);
-    return FSUnrealMcpResponse::MakeSuccess(RequestId, Data);
+    return FSUnrealMcpResponse::MakeSuccess(RequestId, BuildTaskData(*RegisteredTask));
 }
 
 FSUnrealMcpResponse FSUnrealMcpTaskRegistry::MakeStatusResponse(const FString& RequestId, const FString& TaskId) const
@@ -83,9 +81,7 @@ FSUnrealMcpResponse FSUnrealMcpTaskRegistry::CancelTask(const FString& RequestId
         RegisteredTask->Task->Cancel();
     }
 
-    TSharedPtr<FJsonObject> Data = BuildTaskData(*RegisteredTask);
-    Data->SetBoolField(TEXT("cancel_requested"), true);
-    return FSUnrealMcpResponse::MakeSuccess(RequestId, Data);
+    return FSUnrealMcpResponse::MakeSuccess(RequestId, BuildTaskData(*RegisteredTask));
 }
 
 const FSUnrealMcpTaskRegistry::FRegisteredTask* FSUnrealMcpTaskRegistry::FindTask(const FString& TaskId) const
@@ -127,13 +123,7 @@ TSharedPtr<FJsonObject> FSUnrealMcpTaskRegistry::BuildTaskData(const FRegistered
     const ESUnrealMcpTaskState State = RegisteredTask.Task->GetState();
 
     Data->SetStringField(TEXT("task_id"), RegisteredTask.TaskId);
-    Data->SetStringField(TEXT("task_name"), RegisteredTask.Task->GetTaskName());
     Data->SetStringField(TEXT("status"), LexToString(State));
-    Data->SetBoolField(
-        TEXT("completed"),
-        State == ESUnrealMcpTaskState::Succeeded ||
-        State == ESUnrealMcpTaskState::Failed ||
-        State == ESUnrealMcpTaskState::Cancelled);
 
     if (TSharedPtr<FJsonObject> Payload = RegisteredTask.Task->BuildPayload(); Payload.IsValid())
     {

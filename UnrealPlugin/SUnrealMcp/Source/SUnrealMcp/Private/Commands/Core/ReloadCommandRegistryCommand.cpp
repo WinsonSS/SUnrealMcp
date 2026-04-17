@@ -35,10 +35,7 @@ namespace
                     Error.IsEmpty() ? TEXT("Failed to rebuild command registry.") : Error);
             }
 
-            const TSharedRef<FJsonObject> Data = MakeShared<FJsonObject>();
-            Data->SetBoolField(TEXT("reloaded"), true);
-            Data->SetStringField(TEXT("command"), TEXT("reload_command_registry"));
-            return FSUnrealMcpResponse::MakeSuccess(Request.RequestId, Data);
+            return FSUnrealMcpResponse::MakeSuccess(Request.RequestId, MakeShared<FJsonObject>());
         }
     };
 

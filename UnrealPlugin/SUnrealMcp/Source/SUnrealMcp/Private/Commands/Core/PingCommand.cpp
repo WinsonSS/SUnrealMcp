@@ -17,10 +17,7 @@ namespace
             static_cast<void>(Context);
 
             TSharedPtr<FJsonObject> Data = MakeShared<FJsonObject>();
-            Data->SetStringField(TEXT("server"), TEXT("SUnrealMcp"));
-            Data->SetStringField(TEXT("plugin"), TEXT("SUnrealMcp"));
-            Data->SetStringField(TEXT("status"), TEXT("ready"));
-            Data->SetNumberField(TEXT("protocolVersion"), FSUnrealMcpRequest::ProtocolVersion);
+            Data->SetNumberField(TEXT("protocol_version"), FSUnrealMcpRequest::ProtocolVersion);
             return FSUnrealMcpResponse::MakeSuccess(Request.RequestId, Data);
         }
     };
