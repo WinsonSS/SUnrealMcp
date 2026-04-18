@@ -8,6 +8,7 @@
 #include "Mcp/SUnrealMcpProtocol.h"
 #include "Mcp/SUnrealMcpTaskRegistry.h"
 #include "SUnrealMcpModule.h"
+#include "Modules/ModuleManager.h"
 #include "Sockets.h"
 #include "SocketSubsystem.h"
 
@@ -39,6 +40,21 @@ namespace SUnrealMcpServerLog
         }
 
         return RequestId;
+    }
+
+    static bool ReloadCommandRegistryFromModule(FString* OutError)
+    {
+        FSUnrealMcpModule* Module = FModuleManager::GetModulePtr<FSUnrealMcpModule>(TEXT("SUnrealMcp"));
+        if (Module == nullptr)
+        {
+            if (OutError != nullptr)
+            {
+                *OutError = TEXT("SUnrealMcp module is not loaded.");
+            }
+            return false;
+        }
+
+        return Module->RebuildCommandRegistry(OutError);
     }
 }
 
@@ -244,7 +260,12 @@ void FSUnrealMcpServer::ProcessIncomingText(FClientConnection& Connection, const
         {
             UE_LOG(LogSUnrealMcp, Verbose, TEXT("Executing MCP command %s (%s)"), *Request.Command, *Request.RequestId);
             Response = (CommandRegistry.IsValid() && TaskRegistry.IsValid())
-                ? CommandRegistry->Execute(Request, FSUnrealMcpExecutionContext{TaskRegistry.ToSharedRef(), CommandRegistry.ToSharedRef()})
+                ? CommandRegistry->Execute(
+                    Request,
+                    FSUnrealMcpExecutionContext(
+                        TaskRegistry.ToSharedRef(),
+                        CommandRegistry.ToSharedRef(),
+                        SUnrealMcpServerLog::ReloadCommandRegistryFromModule))
                 : FSUnrealMcpResponse::MakeError(
                     Request.RequestId,
                     TEXT("SERVER_NOT_READY"),

@@ -1,7 +1,5 @@
 #include "Mcp/ISUnrealMcpCommand.h"
 #include "Mcp/SUnrealMcpCommandRegistry.h"
-#include "Modules/ModuleManager.h"
-#include "SUnrealMcpModule.h"
 
 namespace
 {
@@ -15,23 +13,12 @@ namespace
 
         virtual FSUnrealMcpResponse Execute(const FSUnrealMcpRequest& Request, const FSUnrealMcpExecutionContext& Context) override
         {
-            static_cast<void>(Context);
-
-            FSUnrealMcpModule* Module = FModuleManager::GetModulePtr<FSUnrealMcpModule>(TEXT("SUnrealMcp"));
-            if (Module == nullptr)
-            {
-                return FSUnrealMcpResponse::MakeError(
-                    Request.RequestId,
-                    TEXT("MODULE_NOT_LOADED"),
-                    TEXT("SUnrealMcp module is not loaded."));
-            }
-
             FString Error;
-            if (!Module->RebuildCommandRegistry(&Error))
+            if (!Context.ReloadCommandRegistry(&Error))
             {
                 return FSUnrealMcpResponse::MakeError(
                     Request.RequestId,
-                    TEXT("RELOAD_FAILED"),
+                    Error == TEXT("SUnrealMcp module is not loaded.") ? TEXT("MODULE_NOT_LOADED") : TEXT("RELOAD_FAILED"),
                     Error.IsEmpty() ? TEXT("Failed to rebuild command registry.") : Error);
             }
 

@@ -1,7 +1,6 @@
 #include "Mcp/ISUnrealMcpCommand.h"
 #include "Mcp/ISUnrealMcpTask.h"
 #include "Mcp/SUnrealMcpCommandRegistry.h"
-#include "Mcp/SUnrealMcpTaskRegistry.h"
 
 namespace
 {
@@ -85,8 +84,8 @@ namespace
                 Request.Params->TryGetNumberField(TEXT("tickCount"), TickCount);
             }
 
-            const FString TaskId = Context.TaskRegistry->EnqueueTask(MakeShared<FMockDelayTask>(TickCount));
-            return Context.TaskRegistry->MakeAcceptedResponse(Request.RequestId, TaskId);
+            const FString TaskId = Context.EnqueueTask(MakeShared<FMockDelayTask>(TickCount));
+            return Context.MakeAcceptedTaskResponse(Request.RequestId, TaskId);
         }
     };
 

@@ -43,7 +43,7 @@ namespace
                 }
             }
 
-            const TArray<FString> UnrealNames = Context.CommandRegistry->ListCommandNames();
+            const TArray<FString> UnrealNames = Context.ListCommandNames();
             TSet<FString> UnrealNamesSet(UnrealNames);
 
             TArray<FString> OnlyInUnreal;

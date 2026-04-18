@@ -112,14 +112,23 @@ function handleHelp(registry: CommandRegistry, argv: string[]): void {
 async function executeCommand(definition: CliCommandDefinition, parsed: ParsedCliOptions, registry: CommandRegistry): Promise<unknown> {
     const resolveTargetForContext = (): Promise<import("./types.js").CliTarget> =>
         resolveTarget(parsed.global);
+    const listRegisteredUnrealCommands = (): string[] =>
+        [
+            ...new Set(
+                registry
+                    .getAll()
+                    .filter((command) => command.family !== "raw" && typeof command.unrealCommand === "string")
+                    .map((command) => command.unrealCommand as string),
+            ),
+        ].sort();
 
     if (definition.execute) {
         return definition.execute({
             target: undefined,
             resolveTarget: resolveTargetForContext,
+            listRegisteredUnrealCommands,
             values: parsed.values,
             global: parsed.global,
-            registry,
         });
     }
 

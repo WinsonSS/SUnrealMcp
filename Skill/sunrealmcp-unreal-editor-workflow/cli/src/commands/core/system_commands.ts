@@ -75,15 +75,7 @@ export function register(registry: CliCommandRegistry): void {
         description: "Report command-name differences between the CLI and the Unreal registry.",
         parameters: [],
         execute: async (context) => {
-            const cliNames = [
-                ...new Set(
-                    context.registry
-                        .getAll()
-                        .filter((definition) => definition.family !== "raw" && typeof definition.unrealCommand === "string")
-                        .map((definition) => definition.unrealCommand as string),
-                ),
-            ].sort();
-
+            const cliNames = context.listRegisteredUnrealCommands();
             const target = await context.resolveTarget();
             const client = new UnrealTransportClient({
                 host: target.host,

@@ -91,13 +91,19 @@ function handleHelp(registry, argv) {
 }
 async function executeCommand(definition, parsed, registry) {
     const resolveTargetForContext = () => resolveTarget(parsed.global);
+    const listRegisteredUnrealCommands = () => [
+        ...new Set(registry
+            .getAll()
+            .filter((command) => command.family !== "raw" && typeof command.unrealCommand === "string")
+            .map((command) => command.unrealCommand)),
+    ].sort();
     if (definition.execute) {
         return definition.execute({
             target: undefined,
             resolveTarget: resolveTargetForContext,
+            listRegisteredUnrealCommands,
             values: parsed.values,
             global: parsed.global,
-            registry,
         });
     }
     const target = await resolveTargetForContext();

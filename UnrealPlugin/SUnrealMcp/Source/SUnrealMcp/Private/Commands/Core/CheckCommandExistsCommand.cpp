@@ -31,7 +31,7 @@ namespace
             }
 
             TSharedPtr<FJsonObject> Data = MakeShared<FJsonObject>();
-            Data->SetBoolField(TEXT("exists"), Context.CommandRegistry->HasCommand(Name));
+            Data->SetBoolField(TEXT("exists"), Context.HasCommand(Name));
             return FSUnrealMcpResponse::MakeSuccess(Request.RequestId, Data);
         }
     };

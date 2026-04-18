@@ -1,6 +1,5 @@
 #include "Mcp/ISUnrealMcpCommand.h"
 #include "Mcp/SUnrealMcpCommandRegistry.h"
-#include "Mcp/SUnrealMcpTaskRegistry.h"
 
 namespace
 {
@@ -31,7 +30,7 @@ namespace
                     TEXT("Missing task_id."));
             }
 
-            return Context.TaskRegistry->MakeStatusResponse(Request.RequestId, TaskId);
+            return Context.GetTaskStatusResponse(Request.RequestId, TaskId);
         }
     };
 

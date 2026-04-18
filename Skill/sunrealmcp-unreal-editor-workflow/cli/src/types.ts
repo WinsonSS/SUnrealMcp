@@ -49,9 +49,9 @@ export interface CliTarget {
 export interface CliCommandExecutionContext {
     target?: CliTarget;
     resolveTarget: () => Promise<CliTarget>;
+    listRegisteredUnrealCommands: () => string[];
     values: CliParameterValues;
     global: CliGlobalOptions;
-    registry: CliCommandRegistry;
 }
 
 export interface CliFamilyDefinition {
