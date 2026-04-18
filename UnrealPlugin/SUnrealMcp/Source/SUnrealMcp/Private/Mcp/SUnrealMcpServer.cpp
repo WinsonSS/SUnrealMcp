@@ -244,7 +244,7 @@ void FSUnrealMcpServer::ProcessIncomingText(FClientConnection& Connection, const
         {
             UE_LOG(LogSUnrealMcp, Verbose, TEXT("Executing MCP command %s (%s)"), *Request.Command, *Request.RequestId);
             Response = (CommandRegistry.IsValid() && TaskRegistry.IsValid())
-                ? CommandRegistry->Execute(Request, FSUnrealMcpExecutionContext{TaskRegistry.ToSharedRef()})
+                ? CommandRegistry->Execute(Request, FSUnrealMcpExecutionContext{TaskRegistry.ToSharedRef(), CommandRegistry.ToSharedRef()})
                 : FSUnrealMcpResponse::MakeError(
                     Request.RequestId,
                     TEXT("SERVER_NOT_READY"),

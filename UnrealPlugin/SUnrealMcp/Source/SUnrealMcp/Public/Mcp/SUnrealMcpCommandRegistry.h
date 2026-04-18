@@ -14,6 +14,8 @@ public:
     bool RegisterCommand(const TSharedRef<ISUnrealMcpCommand>& Command);
     FSUnrealMcpResponse Execute(const FSUnrealMcpRequest& Request, const FSUnrealMcpExecutionContext& Context) const;
     FString GetRegistrationErrorSummary() const;
+    TArray<FString> ListCommandNames() const;
+    bool HasCommand(const FString& Name) const;
 
 private:
     TMap<FString, TSharedRef<ISUnrealMcpCommand>> Commands;

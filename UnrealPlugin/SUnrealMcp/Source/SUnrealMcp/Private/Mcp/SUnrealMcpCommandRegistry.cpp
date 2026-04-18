@@ -39,6 +39,23 @@ FSUnrealMcpResponse FSUnrealMcpCommandRegistry::Execute(const FSUnrealMcpRequest
     return (*FoundCommand)->Execute(Request, Context);
 }
 
+TArray<FString> FSUnrealMcpCommandRegistry::ListCommandNames() const
+{
+    TArray<FString> Names;
+    Names.Reserve(Commands.Num());
+    for (const TPair<FString, TSharedRef<ISUnrealMcpCommand>>& Pair : Commands)
+    {
+        Names.Add(Pair.Key);
+    }
+    Names.Sort();
+    return Names;
+}
+
+bool FSUnrealMcpCommandRegistry::HasCommand(const FString& Name) const
+{
+    return Commands.Contains(Name);
+}
+
 FString FSUnrealMcpCommandRegistry::GetRegistrationErrorSummary() const
 {
     if (RegistrationErrors.IsEmpty())

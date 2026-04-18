@@ -44,7 +44,7 @@ export async function main(argv: string[]): Promise<void> {
     }
 
     const parsed = parseOptions(argv.slice(2), definition.parameters);
-    const output = await executeCommand(definition, parsed);
+    const output = await executeCommand(definition, parsed, registry);
     writeJson(output, parsed.global.pretty);
 }
 
@@ -109,7 +109,7 @@ function handleHelp(registry: CommandRegistry, argv: string[]): void {
     printCommandHelp(registry, family, tokens[1], jsonMode);
 }
 
-async function executeCommand(definition: CliCommandDefinition, parsed: ParsedCliOptions): Promise<unknown> {
+async function executeCommand(definition: CliCommandDefinition, parsed: ParsedCliOptions, registry: CommandRegistry): Promise<unknown> {
     const resolveTargetForContext = (): Promise<import("./types.js").CliTarget> =>
         resolveTarget(parsed.global);
 
@@ -119,6 +119,7 @@ async function executeCommand(definition: CliCommandDefinition, parsed: ParsedCl
             resolveTarget: resolveTargetForContext,
             values: parsed.values,
             global: parsed.global,
+            registry,
         });
     }
 

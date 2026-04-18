@@ -51,6 +51,7 @@ export interface CliCommandExecutionContext {
     resolveTarget: () => Promise<CliTarget>;
     values: CliParameterValues;
     global: CliGlobalOptions;
+    registry: CliCommandRegistry;
 }
 
 export interface CliFamilyDefinition {
@@ -78,6 +79,7 @@ export interface CliCommandModule {
 export interface CliCommandRegistry {
     registerFamily: (definition: CliFamilyDefinition) => void;
     registerCommand: (definition: CliCommandDefinition) => void;
+    getAll: () => CliCommandDefinition[];
 }
 
 export interface CommandSummary {

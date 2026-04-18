@@ -35,7 +35,7 @@ export async function main(argv) {
         throw new Error(`Unknown command "${family} ${cliCommand}". Use "sunrealmcp-cli help ${family}".`);
     }
     const parsed = parseOptions(argv.slice(2), definition.parameters);
-    const output = await executeCommand(definition, parsed);
+    const output = await executeCommand(definition, parsed, registry);
     writeJson(output, parsed.global.pretty);
 }
 async function registerAllCommands(registry) {
@@ -89,7 +89,7 @@ function handleHelp(registry, argv) {
     }
     printCommandHelp(registry, family, tokens[1], jsonMode);
 }
-async function executeCommand(definition, parsed) {
+async function executeCommand(definition, parsed, registry) {
     const resolveTargetForContext = () => resolveTarget(parsed.global);
     if (definition.execute) {
         return definition.execute({
@@ -97,6 +97,7 @@ async function executeCommand(definition, parsed) {
             resolveTarget: resolveTargetForContext,
             values: parsed.values,
             global: parsed.global,
+            registry,
         });
     }
     const target = await resolveTargetForContext();

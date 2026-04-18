@@ -3,10 +3,12 @@
 #include "Mcp/SUnrealMcpProtocol.h"
 
 class FSUnrealMcpTaskRegistry;
+class FSUnrealMcpCommandRegistry;
 
 struct FSUnrealMcpExecutionContext
 {
     TSharedRef<FSUnrealMcpTaskRegistry> TaskRegistry;
+    TSharedRef<FSUnrealMcpCommandRegistry> CommandRegistry;
 };
 
 class SUNREALMCP_API ISUnrealMcpCommand

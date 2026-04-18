@@ -1,4 +1,5 @@
 import { registerCommand, registerFamily } from "../../runtime/command_helpers.js";
+import { UnrealTransportClient } from "../../transport/unreal_client.js";
 import { CliCommandRegistry } from "../../types.js";
 
 const FAMILY_NAME = "system" as const;
@@ -53,5 +54,47 @@ export function register(registry: CliCommandRegistry): void {
         parameters: [
             { name: "task_id", type: "string", description: "Task id.", required: true },
         ],
+    });
+
+    registerCommand(registry, {
+        family: FAMILY_NAME,
+        lifecycle: "core",
+        cliCommand: "check_command_exists",
+        unrealCommand: "check_command_exists",
+        description: "Check whether a single command name is registered on the Unreal side.",
+        parameters: [
+            { name: "name", type: "string", description: "Command name to check.", required: true },
+        ],
+    });
+
+    registerCommand(registry, {
+        family: FAMILY_NAME,
+        lifecycle: "core",
+        cliCommand: "diff_commands",
+        unrealCommand: "diff_commands",
+        description: "Report command-name differences between the CLI and the Unreal registry.",
+        parameters: [],
+        execute: async (context) => {
+            const cliNames = [
+                ...new Set(
+                    context.registry
+                        .getAll()
+                        .filter((definition) => definition.family !== "raw" && typeof definition.unrealCommand === "string")
+                        .map((definition) => definition.unrealCommand as string),
+                ),
+            ].sort();
+
+            const target = await context.resolveTarget();
+            const client = new UnrealTransportClient({
+                host: target.host,
+                port: target.port,
+                timeoutMs: target.timeoutMs,
+            });
+            const response = await client.sendCommand("diff_commands", { cli_names: cliNames });
+            return {
+                ok: response.ok,
+                ...(response.ok ? { data: response.data } : { error: response.error }),
+            };
+        },
     });
 }
