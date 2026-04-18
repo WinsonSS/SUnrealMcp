@@ -4,7 +4,7 @@ import { CliGlobalOptions, CliTarget } from "../types.js";
 
 export const DEFAULT_HOST = "127.0.0.1";
 export const DEFAULT_PORT = 55557;
-export const DEFAULT_TIMEOUT_MS = 5000;
+export const DEFAULT_TIMEOUT_MS = 30000;
 const SETTINGS_SECTION = "/Script/SUnrealMcp.SUnrealMcpSettings";
 const IGNORED_SCAN_DIRS = new Set([
     ".git",

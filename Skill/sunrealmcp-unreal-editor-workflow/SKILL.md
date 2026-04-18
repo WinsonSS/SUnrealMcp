@@ -209,7 +209,7 @@ JSON help output only contains command-specific information. Global options are 
 - `--project <path>` — Project root or .uproject path
 - `--host <string>` — Override resolved bind address
 - `--port <number>` — Override resolved port
-- `--timeout_ms <number>` — Socket timeout override (default: 30000)
+- `--timeout_ms <number>` — Socket timeout override. Use the value exposed by `sunrealmcp-cli help` and the CLI runtime as the default source of truth; only pass this explicitly when the default timeout is not sufficient for the current command.
 - `--pretty` — Pretty-print JSON command output
 - `--verbose` — Include diagnostic fields in command output
 
