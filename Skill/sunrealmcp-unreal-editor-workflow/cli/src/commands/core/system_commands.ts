@@ -37,6 +37,15 @@ export function register(registry: CliCommandRegistry): void {
     registerCommand(registry, {
         family: FAMILY_NAME,
         lifecycle: "core",
+        cliCommand: "refresh_cpp_runtime",
+        unrealCommand: "refresh_cpp_runtime",
+        description: "Run the Live Coding-first C++ runtime refresh workflow and return a task id.",
+        parameters: [],
+    });
+
+    registerCommand(registry, {
+        family: FAMILY_NAME,
+        lifecycle: "core",
         cliCommand: "get_task_status",
         unrealCommand: "get_task_status",
         description: "Query a long-running Unreal task.",

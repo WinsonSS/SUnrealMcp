@@ -145,9 +145,15 @@ CLI 支持多个 Unreal Editor。但是需要通过`--project <project_path>`指
 
 #### Unreal 侧（C++ command）
 
-- 能 Live Coding 就优先 Live Coding
-- 不行就完整重编
-- 必要时 reload command registry
+- 先调用 `sunrealmcp-cli system refresh_cpp_runtime`
+- 用 `sunrealmcp-cli system get_task_status --task_id <id>` 轮询任务结果
+- 根据结构化结果分流：
+  - `succeeded`：立刻继续原任务
+  - `failed` 且 `error.details.resolution = "agent_retry"`：继续修代码，然后再次调用 `refresh_cpp_runtime`
+  - `failed` 且 `error.details.resolution = "needs_user_editor_action"`：先提示用户做轻量编辑器操作，例如退出 PIE，然后重试
+  - `failed` 且 `error.details.resolution = "needs_user_approval"`：先向用户解释为什么需要重路径，再请求允许关闭编辑器或完整重编
+- 只有当 `refresh_cpp_runtime` 明确报告当前环境无法 Live Coding 时，才升级到完整重编
+- 没有用户明确允许时，不要自动关闭编辑器，也不要自动触发完整重编
 
 #### CLI 侧（TypeScript wrapper）
 

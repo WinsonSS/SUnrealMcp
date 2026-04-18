@@ -33,5 +33,10 @@ public class SUnrealMcp : ModuleRules
                 "UMGEditor",
                 "UnrealEd"
             });
+
+        if (Target.Platform == UnrealTargetPlatform.Win64)
+        {
+            PrivateDependencyModuleNames.Add("LiveCoding");
+        }
     }
 }

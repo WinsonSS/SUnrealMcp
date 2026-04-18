@@ -151,9 +151,15 @@ After adding capability:
 
 #### Unreal side (C++ command)
 
-- prefer Live Coding when possible
-- otherwise do a full rebuild
-- reload the command registry when needed
+- first call `sunrealmcp-cli system refresh_cpp_runtime`
+- poll the returned task with `sunrealmcp-cli system get_task_status --task_id <id>`
+- branch on the structured result:
+  - `succeeded`: continue the original task immediately
+  - `failed` with `error.details.resolution = "agent_retry"`: fix the code and retry `refresh_cpp_runtime`
+  - `failed` with `error.details.resolution = "needs_user_editor_action"`: ask the user to do the lightweight editor action first, such as stopping PIE, then retry
+  - `failed` with `error.details.resolution = "needs_user_approval"`: explain why the heavy path is needed and ask the user before closing the editor or doing a full rebuild
+- only fall back to a full rebuild after `refresh_cpp_runtime` reports that Live Coding is unavailable for the current environment
+- do not automatically close the editor or trigger a full rebuild without explicit user approval
 
 #### CLI side (TypeScript wrapper)
 
