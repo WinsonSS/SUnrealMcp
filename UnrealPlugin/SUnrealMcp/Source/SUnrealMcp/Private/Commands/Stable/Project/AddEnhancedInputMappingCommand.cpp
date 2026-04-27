@@ -58,10 +58,23 @@ namespace
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("INVALID_KEY"), FString::Printf(TEXT("Key '%s' is not a valid Unreal input key."), *KeyName));
             }
 
-            MappingContext->Modify();
-            MappingContext->MapKey(InputAction, Key);
-            MappingContext->PostEditChange();
-            MappingContext->MarkPackageDirty();
+            bool bAlreadyExisted = false;
+            for (const FEnhancedActionKeyMapping& Mapping : MappingContext->GetMappings())
+            {
+                if (Mapping.Action == InputAction && Mapping.Key == Key)
+                {
+                    bAlreadyExisted = true;
+                    break;
+                }
+            }
+
+            if (!bAlreadyExisted)
+            {
+                MappingContext->Modify();
+                MappingContext->MapKey(InputAction, Key);
+                MappingContext->PostEditChange();
+                MappingContext->MarkPackageDirty();
+            }
 
             TSharedPtr<FJsonObject> Data = MakeShared<FJsonObject>();
             Data->SetStringField(TEXT("mappingContext"), MappingContext->GetPathName());
@@ -69,6 +82,7 @@ namespace
             Data->SetStringField(TEXT("key"), Key.GetDisplayName().ToString());
             Data->SetStringField(TEXT("keyName"), Key.GetFName().ToString());
             Data->SetNumberField(TEXT("mappingCount"), MappingContext->GetMappings().Num());
+            Data->SetBoolField(TEXT("already_existed"), bAlreadyExisted);
             return FSUnrealMcpResponse::MakeSuccess(Request.RequestId, Data);
         }
     };

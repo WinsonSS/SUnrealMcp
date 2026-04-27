@@ -89,6 +89,7 @@ namespace
 
             UK2Node_ComponentBoundEvent* ExistingNode = const_cast<UK2Node_ComponentBoundEvent*>(
                 FKismetEditorUtilities::FindBoundEventForComponent(WidgetBlueprint, FName(*EventName), ComponentProperty->GetFName()));
+            const bool bCreatedEventNode = ExistingNode == nullptr;
             if (ExistingNode == nullptr)
             {
                 FKismetEditorUtilities::CreateNewBoundEventForClass(Widget->GetClass(), FName(*EventName), WidgetBlueprint, ComponentProperty);
@@ -101,14 +102,75 @@ namespace
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("EVENT_BIND_FAILED"), TEXT("Failed to create bound event node for widget event."));
             }
 
+            TArray<UEdGraph*> GraphsBeforeFunction;
+            WidgetBlueprint->GetAllGraphs(GraphsBeforeFunction);
+            const bool bFunctionGraphExisted = GraphsBeforeFunction.ContainsByPredicate([&FunctionName](const UEdGraph* Graph)
+            {
+                return Graph != nullptr && Graph->GetFName().ToString().Equals(FunctionName, ESearchCase::IgnoreCase);
+            });
+
             UEdGraph* FunctionGraph = SUnrealMcpUMGCommandUtils::EnsureFunctionGraph(WidgetBlueprint, FunctionName);
             if (FunctionGraph == nullptr)
             {
+                if (bCreatedEventNode && ExistingNode != nullptr)
+                {
+                    if (UEdGraph* OwningGraph = ExistingNode->GetGraph())
+                    {
+                        OwningGraph->RemoveNode(ExistingNode);
+                    }
+                    ExistingNode->MarkAsGarbage();
+                    FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBlueprint);
+                }
+
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("FUNCTION_GRAPH_CREATE_FAILED"), TEXT("Failed to create or resolve target function graph."));
             }
+            const bool bCreatedFunctionGraph = !bFunctionGraphExisted;
+
+            UEdGraph* EventGraph = ExistingNode->GetGraph();
+            UK2Node_CallFunction* FunctionCallNode = nullptr;
+            bool bCreatedFunctionCallNode = false;
+
+            auto RollbackCreatedArtifacts = [&]()
+            {
+                if (FunctionCallNode != nullptr && bCreatedFunctionCallNode)
+                {
+                    if (UEdGraph* OwningGraph = FunctionCallNode->GetGraph())
+                    {
+                        OwningGraph->RemoveNode(FunctionCallNode);
+                    }
+                    FunctionCallNode->MarkAsGarbage();
+                    FunctionCallNode = nullptr;
+                }
+
+                if (ExistingNode != nullptr && bCreatedEventNode)
+                {
+                    if (UEdGraph* OwningGraph = ExistingNode->GetGraph())
+                    {
+                        OwningGraph->RemoveNode(ExistingNode);
+                    }
+                    ExistingNode->MarkAsGarbage();
+                    ExistingNode = nullptr;
+                }
+
+                if (FunctionGraph != nullptr && bCreatedFunctionGraph)
+                {
+                    FBlueprintEditorUtils::RemoveGraph(WidgetBlueprint, FunctionGraph);
+                    FunctionGraph = nullptr;
+                }
+
+                FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBlueprint);
+            };
 
             FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBlueprint);
-            FKismetEditorUtilities::CompileBlueprint(WidgetBlueprint);
+            FString CompileError;
+            if (!SUnrealMcpBlueprintCommandUtils::CompileBlueprintAndGetError(WidgetBlueprint, CompileError))
+            {
+                RollbackCreatedArtifacts();
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("WIDGET_COMPILE_FAILED"),
+                    CompileError);
+            }
 
             UFunction* TargetFunction = nullptr;
             if (WidgetBlueprint->SkeletonGeneratedClass != nullptr)
@@ -121,16 +183,16 @@ namespace
             }
             if (TargetFunction == nullptr)
             {
+                RollbackCreatedArtifacts();
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("FUNCTION_NOT_FOUND"), FString::Printf(TEXT("Could not resolve widget function '%s' after creating the function graph."), *FunctionName));
             }
 
-            UEdGraph* EventGraph = ExistingNode->GetGraph();
             if (EventGraph == nullptr)
             {
+                RollbackCreatedArtifacts();
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("EVENT_GRAPH_UNAVAILABLE"), TEXT("Bound event node is not attached to a valid event graph."));
             }
 
-            UK2Node_CallFunction* FunctionCallNode = nullptr;
             for (UEdGraphNode* Node : EventGraph->Nodes)
             {
                 UK2Node_CallFunction* Candidate = Cast<UK2Node_CallFunction>(Node);
@@ -141,9 +203,9 @@ namespace
                 }
             }
 
-            const bool bCreatedFunctionCallNode = FunctionCallNode == nullptr;
             if (FunctionCallNode == nullptr)
             {
+                bCreatedFunctionCallNode = true;
                 FunctionCallNode = NewObject<UK2Node_CallFunction>(EventGraph);
                 FunctionCallNode->SetFromFunction(TargetFunction);
                 FunctionCallNode->NodePosX = ExistingNode->NodePosX + 320;
@@ -158,6 +220,7 @@ namespace
             UEdGraphPin* FunctionExecPin = FindFirstExecPin(FunctionCallNode, EGPD_Input);
             if (EventExecPin == nullptr || FunctionExecPin == nullptr)
             {
+                RollbackCreatedArtifacts();
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("EXEC_PIN_NOT_FOUND"), TEXT("Failed to resolve exec pins needed to bind the widget event to the target function."));
             }
 
@@ -167,12 +230,20 @@ namespace
                 const bool bConnected = Schema != nullptr ? Schema->TryCreateConnection(EventExecPin, FunctionExecPin) : false;
                 if (!bConnected)
                 {
+                    RollbackCreatedArtifacts();
                     return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("EVENT_BIND_CONNECT_FAILED"), TEXT("Failed to connect the widget event node to the target function call."));
                 }
             }
 
             FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBlueprint);
-            FKismetEditorUtilities::CompileBlueprint(WidgetBlueprint);
+            if (!SUnrealMcpBlueprintCommandUtils::CompileBlueprintAndGetError(WidgetBlueprint, CompileError))
+            {
+                RollbackCreatedArtifacts();
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("WIDGET_COMPILE_FAILED"),
+                    CompileError);
+            }
 
             TSharedPtr<FJsonObject> Data = MakeShared<FJsonObject>();
             Data->SetObjectField(TEXT("widgetBlueprint"), SUnrealMcpUMGCommandUtils::BuildWidgetBlueprintSummary(WidgetBlueprint));

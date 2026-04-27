@@ -34,7 +34,14 @@ namespace
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("BLUEPRINT_NOT_FOUND"), FString::Printf(TEXT("Could not load blueprint '%s'."), *BlueprintPath));
             }
 
-            FKismetEditorUtilities::CompileBlueprint(Blueprint);
+            FString CompileError;
+            if (!SUnrealMcpBlueprintCommandUtils::CompileBlueprintAndGetError(Blueprint, CompileError))
+            {
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("BLUEPRINT_COMPILE_FAILED"),
+                    CompileError);
+            }
 
             TSharedPtr<FJsonObject> Data = MakeShared<FJsonObject>();
             Data->SetObjectField(TEXT("blueprint"), SUnrealMcpBlueprintCommandUtils::BuildBlueprintSummary(Blueprint));

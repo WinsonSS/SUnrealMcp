@@ -11,6 +11,7 @@
 #include "Mcp/SUnrealMcpProtocol.h"
 #include "UObject/NameTypes.h"
 #include "UObject/TextProperty.h"
+#include "UObject/UObjectIterator.h"
 #include "UObject/UnrealType.h"
 
 namespace SUnrealMcpEditorCommandUtils
@@ -168,13 +169,43 @@ namespace SUnrealMcpEditorCommandUtils
 
     inline UClass* ResolveActorClassPath(const FString& ActorClassReference)
     {
-        if (ActorClassReference.IsEmpty() || !ActorClassReference.Contains(TEXT("/")) || !ActorClassReference.Contains(TEXT(".")))
+        if (ActorClassReference.IsEmpty())
         {
             return nullptr;
         }
 
-        UClass* LoadedClass = LoadObject<UClass>(nullptr, *ActorClassReference);
-        return LoadedClass != nullptr && LoadedClass->IsChildOf(AActor::StaticClass()) ? LoadedClass : nullptr;
+        if (ActorClassReference.Contains(TEXT("/")) && ActorClassReference.Contains(TEXT(".")))
+        {
+            UClass* LoadedClass = LoadObject<UClass>(nullptr, *ActorClassReference);
+            return LoadedClass != nullptr && LoadedClass->IsChildOf(AActor::StaticClass()) ? LoadedClass : nullptr;
+        }
+
+        TArray<FString> CandidateNames;
+        CandidateNames.Add(ActorClassReference);
+        if (!ActorClassReference.StartsWith(TEXT("A")))
+        {
+            CandidateNames.Add(TEXT("A") + ActorClassReference);
+        }
+
+        for (TObjectIterator<UClass> It; It; ++It)
+        {
+            UClass* Class = *It;
+            if (Class == nullptr || !Class->IsChildOf(AActor::StaticClass()))
+            {
+                continue;
+            }
+
+            for (const FString& CandidateName : CandidateNames)
+            {
+                if (Class->GetName().Equals(CandidateName, ESearchCase::IgnoreCase)
+                    || Class->GetPathName().Equals(ActorClassReference, ESearchCase::IgnoreCase))
+                {
+                    return Class;
+                }
+            }
+        }
+
+        return nullptr;
     }
 
     inline UClass* LoadBlueprintActorClass(const FString& BlueprintPath, FString& OutError)

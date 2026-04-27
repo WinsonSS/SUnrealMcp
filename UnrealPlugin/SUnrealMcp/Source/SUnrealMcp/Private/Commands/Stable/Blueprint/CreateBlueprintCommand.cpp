@@ -41,7 +41,9 @@ namespace
 
             FString PackagePath;
             FString AssetName;
-            if (!SUnrealMcpBlueprintCommandUtils::SplitAssetPath(BlueprintPath, PackagePath, AssetName))
+            FString PackageName;
+            FString ObjectPath;
+            if (!SUnrealMcpBlueprintCommandUtils::ResolveAssetObjectPath(BlueprintPath, PackagePath, AssetName, PackageName, ObjectPath))
             {
                 return FSUnrealMcpResponse::MakeError(
                     Request.RequestId,
@@ -49,7 +51,7 @@ namespace
                     FString::Printf(TEXT("Blueprint path '%s' is invalid."), *BlueprintPath));
             }
 
-            if (FindObject<UBlueprint>(nullptr, *BlueprintPath) != nullptr)
+            if (SUnrealMcpBlueprintCommandUtils::DoesAssetTargetExist(PackageName, ObjectPath))
             {
                 return FSUnrealMcpResponse::MakeError(
                     Request.RequestId,
@@ -66,7 +68,7 @@ namespace
                     FString::Printf(TEXT("Could not resolve parent class '%s'."), *ParentClassReference));
             }
 
-            UPackage* Package = CreatePackage(*FString::Printf(TEXT("%s/%s"), *PackagePath, *AssetName));
+            UPackage* Package = CreatePackage(*PackageName);
             if (Package == nullptr)
             {
                 return FSUnrealMcpResponse::MakeError(
@@ -94,7 +96,14 @@ namespace
 
             FAssetRegistryModule::AssetCreated(NewBlueprint);
             Package->MarkPackageDirty();
-            FKismetEditorUtilities::CompileBlueprint(NewBlueprint);
+            FString CompileError;
+            if (!SUnrealMcpBlueprintCommandUtils::CompileBlueprintAndGetError(NewBlueprint, CompileError))
+            {
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("BLUEPRINT_COMPILE_FAILED"),
+                    CompileError);
+            }
 
             TSharedPtr<FJsonObject> Data = MakeShared<FJsonObject>();
             Data->SetObjectField(TEXT("blueprint"), SUnrealMcpBlueprintCommandUtils::BuildBlueprintSummary(NewBlueprint));

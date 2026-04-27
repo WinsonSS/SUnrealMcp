@@ -29,6 +29,20 @@ namespace SUnrealMcpUMGCommandUtils
         return ParentClass != nullptr && ParentClass->IsChildOf(UUserWidget::StaticClass()) ? ParentClass : nullptr;
     }
 
+    inline void EnsureWidgetVariableGuid(UWidgetBlueprint* WidgetBlueprint, UWidget* Widget)
+    {
+        if (WidgetBlueprint == nullptr || Widget == nullptr)
+        {
+            return;
+        }
+
+        const FName WidgetName = Widget->GetFName();
+        if (!WidgetBlueprint->WidgetVariableNameToGuidMap.Contains(WidgetName))
+        {
+            WidgetBlueprint->WidgetVariableNameToGuidMap.Add(WidgetName, FGuid::NewGuid());
+        }
+    }
+
     inline UCanvasPanel* EnsureRootCanvasPanel(UWidgetBlueprint* WidgetBlueprint)
     {
         if (WidgetBlueprint == nullptr || WidgetBlueprint->WidgetTree == nullptr)
@@ -38,6 +52,7 @@ namespace SUnrealMcpUMGCommandUtils
 
         if (UCanvasPanel* ExistingCanvas = Cast<UCanvasPanel>(WidgetBlueprint->WidgetTree->RootWidget))
         {
+            EnsureWidgetVariableGuid(WidgetBlueprint, ExistingCanvas);
             return ExistingCanvas;
         }
 
@@ -46,6 +61,7 @@ namespace SUnrealMcpUMGCommandUtils
         {
             RootCanvas->bIsVariable = false;
             WidgetBlueprint->WidgetTree->RootWidget = RootCanvas;
+            EnsureWidgetVariableGuid(WidgetBlueprint, RootCanvas);
         }
 
         return RootCanvas;

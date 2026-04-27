@@ -97,16 +97,27 @@ namespace
 
             FBlueprintEditorUtils::AddMemberVariable(Blueprint, FName(*VariableName), PinType);
 
+            FBPVariableDescription* AddedVariable = nullptr;
             for (FBPVariableDescription& Variable : Blueprint->NewVariables)
             {
                 if (Variable.VarName.ToString().Equals(VariableName, ESearchCase::IgnoreCase))
                 {
-                    if (bIsExposed)
-                    {
-                        Variable.PropertyFlags |= CPF_Edit | CPF_BlueprintVisible;
-                    }
+                    AddedVariable = &Variable;
                     break;
                 }
+            }
+
+            if (AddedVariable == nullptr)
+            {
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("VARIABLE_CREATE_FAILED"),
+                    FString::Printf(TEXT("Failed to create blueprint variable '%s'."), *VariableName));
+            }
+
+            if (bIsExposed)
+            {
+                AddedVariable->PropertyFlags |= CPF_Edit | CPF_BlueprintVisible;
             }
 
             FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(Blueprint);

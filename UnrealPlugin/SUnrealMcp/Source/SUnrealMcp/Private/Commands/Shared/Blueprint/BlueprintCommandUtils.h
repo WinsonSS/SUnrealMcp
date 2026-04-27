@@ -6,6 +6,8 @@
 #include "Engine/SimpleConstructionScript.h"
 #include "GameFramework/Actor.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "Kismet2/KismetEditorUtilities.h"
+#include "Misc/PackageName.h"
 #include "UObject/UObjectIterator.h"
 
 namespace SUnrealMcpBlueprintCommandUtils
@@ -33,6 +35,48 @@ namespace SUnrealMcpBlueprintCommandUtils
         OutPackagePath = ObjectPath.Left(SlashIndex);
         OutAssetName = ObjectPath.Mid(SlashIndex + 1);
         return !OutPackagePath.IsEmpty() && !OutAssetName.IsEmpty();
+    }
+
+    inline bool ResolveAssetObjectPath(
+        const FString& AssetPath,
+        FString& OutPackagePath,
+        FString& OutAssetName,
+        FString& OutPackageName,
+        FString& OutObjectPath)
+    {
+        if (!SplitAssetPath(AssetPath, OutPackagePath, OutAssetName))
+        {
+            return false;
+        }
+
+        OutPackageName = FString::Printf(TEXT("%s/%s"), *OutPackagePath, *OutAssetName);
+        OutObjectPath = FString::Printf(TEXT("%s.%s"), *OutPackageName, *OutAssetName);
+        return true;
+    }
+
+    inline bool DoesAssetTargetExist(const FString& PackageName, const FString& ObjectPath)
+    {
+        return (!ObjectPath.IsEmpty() && FindObject<UObject>(nullptr, *ObjectPath) != nullptr)
+            || (!PackageName.IsEmpty() && FPackageName::DoesPackageExist(PackageName));
+    }
+
+    inline bool CompileBlueprintAndGetError(UBlueprint* Blueprint, FString& OutError)
+    {
+        if (Blueprint == nullptr)
+        {
+            OutError = TEXT("Blueprint is invalid.");
+            return false;
+        }
+
+        FKismetEditorUtilities::CompileBlueprint(Blueprint);
+        if (Blueprint->Status == BS_Error)
+        {
+            OutError = FString::Printf(TEXT("Blueprint '%s' failed to compile."), *Blueprint->GetPathName());
+            return false;
+        }
+
+        OutError.Reset();
+        return true;
     }
 
     inline UClass* ResolveParentClassReference(const FString& ParentClassReference)

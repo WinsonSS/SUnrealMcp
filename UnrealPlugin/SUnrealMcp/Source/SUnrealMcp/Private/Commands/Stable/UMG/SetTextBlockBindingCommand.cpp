@@ -71,7 +71,14 @@ namespace
             WidgetBlueprint->Bindings.Remove(Binding);
             WidgetBlueprint->Bindings.AddUnique(Binding);
             FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBlueprint);
-            FKismetEditorUtilities::CompileBlueprint(WidgetBlueprint);
+            FString CompileError;
+            if (!SUnrealMcpBlueprintCommandUtils::CompileBlueprintAndGetError(WidgetBlueprint, CompileError))
+            {
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("WIDGET_COMPILE_FAILED"),
+                    CompileError);
+            }
 
             TSharedPtr<FJsonObject> Data = MakeShared<FJsonObject>();
             Data->SetObjectField(TEXT("widgetBlueprint"), SUnrealMcpUMGCommandUtils::BuildWidgetBlueprintSummary(WidgetBlueprint));

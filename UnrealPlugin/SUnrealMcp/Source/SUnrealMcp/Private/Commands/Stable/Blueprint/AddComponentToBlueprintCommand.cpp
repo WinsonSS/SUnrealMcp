@@ -135,7 +135,14 @@ namespace
 
             Blueprint->SimpleConstructionScript->AddNode(NewNode);
             FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
-            FKismetEditorUtilities::CompileBlueprint(Blueprint);
+            FString CompileError;
+            if (!SUnrealMcpBlueprintCommandUtils::CompileBlueprintAndGetError(Blueprint, CompileError))
+            {
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("BLUEPRINT_COMPILE_FAILED"),
+                    CompileError);
+            }
 
             TSharedPtr<FJsonObject> ComponentData = MakeShared<FJsonObject>();
             ComponentData->SetStringField(TEXT("name"), NewNode->GetVariableName().ToString());

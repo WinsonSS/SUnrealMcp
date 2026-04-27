@@ -59,7 +59,6 @@ namespace
             FunctionNode->SetFromFunction(Function);
             FunctionNode->NodePosX = FMath::RoundToInt(Position.X);
             FunctionNode->NodePosY = FMath::RoundToInt(Position.Y);
-            EventGraph->AddNode(FunctionNode, true, false);
             FunctionNode->CreateNewGuid();
             FunctionNode->PostPlacedNewNode();
             FunctionNode->AllocateDefaultPins();
@@ -83,6 +82,7 @@ namespace
                 }
             }
 
+            EventGraph->AddNode(FunctionNode, true, false);
             FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(Blueprint);
 
             TSharedPtr<FJsonObject> Data = MakeShared<FJsonObject>();

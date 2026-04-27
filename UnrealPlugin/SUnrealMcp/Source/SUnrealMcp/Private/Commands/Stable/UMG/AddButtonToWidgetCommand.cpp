@@ -85,11 +85,13 @@ namespace
             }
 
             Button->bIsVariable = true;
+            SUnrealMcpUMGCommandUtils::EnsureWidgetVariableGuid(WidgetBlueprint, Button);
             Button->SetBackgroundColor(ReadColorOrDefault(Request.Params, TEXT("background_color"), FLinearColor(0.1f, 0.1f, 0.1f, 1.0f)));
 
             UTextBlock* TextBlock = WidgetBlueprint->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("%s_Text"), *ButtonName));
             if (TextBlock != nullptr)
             {
+                SUnrealMcpUMGCommandUtils::EnsureWidgetVariableGuid(WidgetBlueprint, TextBlock);
                 TextBlock->SetText(FText::FromString(TextValue));
                 TextBlock->SetColorAndOpacity(FSlateColor(ReadColorOrDefault(Request.Params, TEXT("color"), FLinearColor::White)));
 
@@ -108,7 +110,14 @@ namespace
                 ReadVector2OrDefault(Request.Params, TEXT("size"), FVector2D(200.0f, 50.0f)));
 
             FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBlueprint);
-            FKismetEditorUtilities::CompileBlueprint(WidgetBlueprint);
+            FString CompileError;
+            if (!SUnrealMcpBlueprintCommandUtils::CompileBlueprintAndGetError(WidgetBlueprint, CompileError))
+            {
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("WIDGET_COMPILE_FAILED"),
+                    CompileError);
+            }
 
             TSharedPtr<FJsonObject> WidgetData = MakeShared<FJsonObject>();
             WidgetData->SetStringField(TEXT("name"), ButtonName);

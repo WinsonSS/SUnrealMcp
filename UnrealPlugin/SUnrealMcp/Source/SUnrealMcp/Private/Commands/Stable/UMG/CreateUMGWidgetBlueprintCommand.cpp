@@ -38,12 +38,14 @@ namespace
 
             FString PackagePath;
             FString AssetName;
-            if (!SUnrealMcpBlueprintCommandUtils::SplitAssetPath(WidgetPath, PackagePath, AssetName))
+            FString PackageName;
+            FString ObjectPath;
+            if (!SUnrealMcpBlueprintCommandUtils::ResolveAssetObjectPath(WidgetPath, PackagePath, AssetName, PackageName, ObjectPath))
             {
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("INVALID_WIDGET_PATH"), FString::Printf(TEXT("Widget path '%s' is invalid."), *WidgetPath));
             }
 
-            if (FindObject<UWidgetBlueprint>(nullptr, *WidgetPath) != nullptr)
+            if (SUnrealMcpBlueprintCommandUtils::DoesAssetTargetExist(PackageName, ObjectPath))
             {
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("WIDGET_ALREADY_EXISTS"), FString::Printf(TEXT("Widget Blueprint '%s' already exists."), *WidgetPath));
             }
@@ -54,7 +56,7 @@ namespace
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("INVALID_PARENT_CLASS"), FString::Printf(TEXT("Could not resolve widget parent class '%s'."), *ParentClassReference));
             }
 
-            UPackage* Package = CreatePackage(*FString::Printf(TEXT("%s/%s"), *PackagePath, *AssetName));
+            UPackage* Package = CreatePackage(*PackageName);
             if (Package == nullptr)
             {
                 return FSUnrealMcpResponse::MakeError(Request.RequestId, TEXT("PACKAGE_CREATE_FAILED"), FString::Printf(TEXT("Could not create package for '%s'."), *WidgetPath));
@@ -77,7 +79,14 @@ namespace
             SUnrealMcpUMGCommandUtils::EnsureRootCanvasPanel(WidgetBlueprint);
             FAssetRegistryModule::AssetCreated(WidgetBlueprint);
             Package->MarkPackageDirty();
-            FKismetEditorUtilities::CompileBlueprint(WidgetBlueprint);
+            FString CompileError;
+            if (!SUnrealMcpBlueprintCommandUtils::CompileBlueprintAndGetError(WidgetBlueprint, CompileError))
+            {
+                return FSUnrealMcpResponse::MakeError(
+                    Request.RequestId,
+                    TEXT("WIDGET_COMPILE_FAILED"),
+                    CompileError);
+            }
 
             TSharedPtr<FJsonObject> Data = MakeShared<FJsonObject>();
             Data->SetObjectField(TEXT("widget"), SUnrealMcpUMGCommandUtils::BuildWidgetBlueprintSummary(WidgetBlueprint));
