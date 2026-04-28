@@ -142,8 +142,8 @@ export function register(registry: CliCommandRegistry): void {
         description: "Inspect nodes, pins, and links in a selected Blueprint graph for graph analysis.",
         parameters: [
             { name: "blueprint_path", type: "string", description: "Target Blueprint asset path.", required: true },
-            { name: "graph_type", type: "string", description: "Graph type, for example Event, Function, Macro, or Delegate." },
-            { name: "graph_name", type: "string", description: "Graph name; when reading a function graph this is usually the function name." },
+            { name: "graph_type", type: "string", description: "Graph type, for example Event, Function, Macro, Delegate, or Collapsed." },
+            { name: "graph_name", type: "string", description: "Graph name; for Collapsed graphs this can also be the source composite node id." },
             { name: "include_pins", type: "boolean", description: "Whether to include pin and link details.", defaultValue: true },
         ],
         mapParams(values) {
@@ -154,6 +154,24 @@ export function register(registry: CliCommandRegistry): void {
             if (values.graph_type !== undefined) params.graph_type = values.graph_type;
             if (values.graph_name !== undefined) params.graph_name = values.graph_name;
             return params;
+        },
+    });
+
+    registerCommand(registry, {
+        family: FAMILY_NAME,
+        lifecycle: "stable",
+        cliCommand: "list_blueprint_graphs",
+        unrealCommand: "list_blueprint_graphs",
+        description: "List event, function, macro, delegate, and collapsed graphs in a Blueprint.",
+        parameters: [
+            { name: "blueprint_path", type: "string", description: "Target Blueprint asset path.", required: true },
+            { name: "include_collapsed", type: "boolean", description: "Whether to include collapsed graphs.", defaultValue: true },
+        ],
+        mapParams(values) {
+            return {
+                blueprint_path: values.blueprint_path,
+                include_collapsed: values.include_collapsed ?? true,
+            };
         },
     });
 }

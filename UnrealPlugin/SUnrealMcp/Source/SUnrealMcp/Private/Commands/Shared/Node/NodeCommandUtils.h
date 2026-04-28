@@ -11,6 +11,7 @@
 #include "Engine/SimpleConstructionScript.h"
 #include "InputAction.h"
 #include "K2Node_CallFunction.h"
+#include "K2Node_Composite.h"
 #include "K2Node_EnhancedInputAction.h"
 #include "K2Node_Event.h"
 #include "K2Node_Self.h"
@@ -137,6 +138,41 @@ namespace SUnrealMcpNodeCommandUtils
         return nullptr;
     }
 
+    inline UEdGraph* FindCollapsedGraphByName(const TArray<UEdGraph*>& SourceGraphs, const FString& GraphName)
+    {
+        if (GraphName.IsEmpty())
+        {
+            return nullptr;
+        }
+
+        for (UEdGraph* SourceGraph : SourceGraphs)
+        {
+            if (SourceGraph == nullptr)
+            {
+                continue;
+            }
+
+            for (UEdGraphNode* Node : SourceGraph->Nodes)
+            {
+                const UK2Node_Composite* CompositeNode = Cast<UK2Node_Composite>(Node);
+                if (CompositeNode == nullptr || CompositeNode->BoundGraph == nullptr)
+                {
+                    continue;
+                }
+
+                const FString NodeTitle = CompositeNode->GetNodeTitle(ENodeTitleType::ListView).ToString();
+                const FString NodeId = CompositeNode->NodeGuid.ToString();
+                if (NodeTitle.Equals(GraphName, ESearchCase::IgnoreCase)
+                    || NodeId.Equals(GraphName, ESearchCase::IgnoreCase))
+                {
+                    return CompositeNode->BoundGraph;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
     inline UEdGraph* ResolveGraph(UBlueprint* Blueprint, const FString& GraphType, const FString& GraphName)
     {
         if (Blueprint == nullptr)
@@ -146,6 +182,11 @@ namespace SUnrealMcpNodeCommandUtils
 
         if (GraphType.IsEmpty() || GraphType.Equals(TEXT("Event"), ESearchCase::IgnoreCase))
         {
+            if (!GraphName.IsEmpty())
+            {
+                return FindGraphByName(Blueprint->UbergraphPages, GraphName);
+            }
+
             return EnsureEventGraph(Blueprint);
         }
 
@@ -162,6 +203,22 @@ namespace SUnrealMcpNodeCommandUtils
         if (GraphType.Equals(TEXT("Delegate"), ESearchCase::IgnoreCase))
         {
             return FindGraphByName(Blueprint->DelegateSignatureGraphs, GraphName);
+        }
+
+        if (GraphType.Equals(TEXT("Collapsed"), ESearchCase::IgnoreCase)
+            || GraphType.Equals(TEXT("Composite"), ESearchCase::IgnoreCase))
+        {
+            if (UEdGraph* Graph = FindCollapsedGraphByName(Blueprint->UbergraphPages, GraphName))
+            {
+                return Graph;
+            }
+
+            if (UEdGraph* Graph = FindCollapsedGraphByName(Blueprint->FunctionGraphs, GraphName))
+            {
+                return Graph;
+            }
+
+            return FindCollapsedGraphByName(Blueprint->MacroGraphs, GraphName);
         }
 
         return nullptr;
